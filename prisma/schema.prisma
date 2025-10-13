@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  email    String    @unique
+  password String
+  meetings Meeting[] // one-to-many relationship: a user can have many meetings
+
+  @@map("users")
+}
+
+model Patient {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String?   @unique
+  phone     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  meetings  Meeting[] // one-to-many relationship
+
+  @@map("patients")
+}
+
+model Meeting {
+  id         Int      @id @default(autoincrement())
+  name       String
+  created_at DateTime @default(now())
+  user_id    Int
+  patient_id Int? // 👈 make nullable so old data works
+
+  user        User         @relation(fields: [user_id], references: [id])
+  patient     Patient?     @relation(fields: [patient_id], references: [id])
+  transcripts Transcript[]
+
+  @@map("meetings")
+}
+
+model Transcript {
+  id          Int      @id @default(autoincrement())
+  meeting_id  Int
+  meeting     Meeting  @relation(fields: [meeting_id], references: [id])
+  transcript  String // raw transcript
+  summary     String? // optional summary
+  translation String? // optional translation
+  key_points  String? // optional
+  action      String? // optional
+  created_at  DateTime @default(now())
+
+  @@map("transcripts")
+}
