@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useRef } from "react";
 
 const SectionEditor = ({ section, key, sections, setSections }) => {
