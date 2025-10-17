@@ -35,10 +35,6 @@ export default function App() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [readyForSummary, setReadyForSummary] = useState(false);
 
-  const [mainTitle, setMainTitle] = useState('ARCA Lite EMR'); // <-- Added
-  const [editingTitle, setEditingTitle] = useState(false); // <-- Added
-  const [currentMeetingId, setCurrentMeetingId] = useState(null);
-
 
   const audioCtxRef = useRef(null);
   const processorRef = useRef(null);
@@ -65,8 +61,7 @@ export default function App() {
   const stepSec = 5;
   const recordLen = sampleRate * recordSec;
   const stepLen = sampleRate * stepSec;
-  
-  const [dictating, setDictating]=useState(false);
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -139,9 +134,6 @@ const saveSectionToDB = async (meetingId, sectionKey, content) => {
     console.error("Error saving section:", err);
   }
 };
-
-
-
 
 const router = useRouter();
 
@@ -218,33 +210,53 @@ useEffect(() => {
   fetchStats();
 }, []);
 
-
-
-  
-
   // Poll transcript every 3 seconds
-  const startTranscriptPolling = () => {
-    const pollTranscript = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/get_transcript');
-        if (response.ok) {
-          const data = await response.json();
-          setTranscript(data.transcript || sampleTranscript);
-          setTranslation(data.translation || '');
-        }
-      } catch (error) {
-        setTranscript(sampleTranscript);
+const startTranscriptPolling = () => {
+  const pollTranscript = async () => {
+    if (!user || !user.id) {
+      console.warn("Missing user or user.id");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("user_id", user.id);
+
+    // Verify data before sending
+    for (const [key, value] of formData.entries()) {
+      console.log("FormData:", key, value);
+    }
+
+    try {
+      const response = await fetch("http://localhost:8000/get_transcript", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Fetch error: ${response.status}`);
       }
-    };
-    pollTranscript();
-    transcriptPollingRef.current = setInterval(pollTranscript, 3000);
-  };
-  const stopTranscriptPolling = () => {
-    if (transcriptPollingRef.current) {
-      clearInterval(transcriptPollingRef.current);
-      transcriptPollingRef.current = null;
+
+      const data = await response.json();
+      setTranscript(data.transcript || sampleTranscript);
+      setTranslation(data.translation || "");
+    } catch (error) {
+      console.error("Error fetching transcript:", error);
+      setTranscript(sampleTranscript);
     }
   };
+
+  pollTranscript();
+  transcriptPollingRef.current = setInterval(pollTranscript, 3000);
+};
+
+const stopTranscriptPolling = () => {
+  if (transcriptPollingRef.current) {
+    clearInterval(transcriptPollingRef.current);
+    transcriptPollingRef.current = null;
+  }
+};
+
+
 
 const escapeRegex = (str) => str?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") || "";
 
@@ -812,17 +824,27 @@ function CodePenWaveform({ paused }) {
     }
     return new Blob([view], { type: 'audio/wav' });
   }
+  
   async function upload(blob, name) {
-    const f = new FormData();
-    f.append('audio', blob, name);
-    return fetch('http://localhost:8000/uploadchunk', {
-      method: 'POST',
-      body: f
-    }).then(res => {
-      if (!res.ok) throw new Error('upload failed ' + res.status);
-      return res.json();
-    });
+  if (!user) {
+    console.error("User not loaded yet");
+    return;
   }
+
+  const f = new FormData();
+  f.append("audio", blob, name);
+  f.append("user_id", user.id); // send user ID to backend
+
+  return fetch("http://localhost:8000/uploadchunk", {
+    method: "POST",
+    body: f,
+  }).then((res) => {
+    if (!res.ok) throw new Error("upload failed " + res.status);
+    return res.json();
+  });
+}
+
+
 
   function emitChunk(startOffset, endOffset, isFinal = false) {
     const full = flatten(pcmBuffersRef.current);

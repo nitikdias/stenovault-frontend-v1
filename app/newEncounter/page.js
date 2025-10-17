@@ -23,10 +23,19 @@ export default function NewEncounter() {
 
   const { setCanRecord } = useRecording();
 
-  const handleLogout = async () => {
-  await fetch("/api/logout", { method: "POST" });
-  router.push("/login");
-};
+const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/logout", { method: "POST" });
+      if (res.ok) {
+        console.log("Logged out successfully");
+        router.push("/login"); // redirect to login
+      } else {
+        console.error("Logout failed");
+      }
+    } catch (err) {
+      console.error("Error logging out:", err);
+    }
+  };
 
 
   // Fetch stats from backend

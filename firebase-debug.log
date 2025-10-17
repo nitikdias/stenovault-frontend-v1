@@ -1,0 +1,17 @@
+[debug] [2025-10-16T09:35:26.467Z] ----------------------------------------------------------------------
+[debug] [2025-10-16T09:35:26.469Z] Command:       /opt/homebrew/Cellar/node/24.4.1/bin/node /opt/homebrew/bin/firebase login
+[debug] [2025-10-16T09:35:26.470Z] CLI Version:   14.20.0
+[debug] [2025-10-16T09:35:26.470Z] Platform:      darwin
+[debug] [2025-10-16T09:35:26.470Z] Node Version:  v24.4.1
+[debug] [2025-10-16T09:35:26.470Z] Time:          Thu Oct 16 2025 15:05:26 GMT+0530 (India Standard Time)
+[debug] [2025-10-16T09:35:26.470Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-10-16T09:35:26.471Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2025-10-16T09:35:26.586Z] Object "/storage" in "firebase.json" is missing required property: {"missingProperty":"rules"}
+[debug] [2025-10-16T09:35:26.586Z] Field "/storage" in "firebase.json" is possibly invalid: must be array
+[debug] [2025-10-16T09:35:26.586Z] Field "/storage" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
+[debug] [2025-10-16T09:35:27.169Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-10-16T09:35:27.169Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[info] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 

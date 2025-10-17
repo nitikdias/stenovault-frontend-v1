@@ -10,43 +10,67 @@ export default function Register({ stats }) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [user, setUser] = useState(null);
+
+  //fetch user details
+    useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchUser();
+  }, []);
 
   const handleFileChange = (e) => {
     setFiles(e.target.files);
   };
 
   const handleRegister = async () => {
-    if (!files.length) {
-      setMessage("Please select at least one file.");
-      return;
+  if (!files.length) {
+    setMessage("Please select at least one file.");
+    return;
+  }
+
+  if (!user) {
+    setMessage("User not loaded yet.");
+    return;
+  }
+
+  const formData = new FormData();
+  Array.from(files).forEach((file) => formData.append("files", file));
+  formData.append("user_id", user.id); // ✅ attach user_id
+
+  setLoading(true);
+  setMessage("");
+
+  try {
+    const res = await fetch("http://localhost:8000/register", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      setMessage("Registration successful!");
+      setFiles([]); // clear selected files
+    } else {
+      setMessage(data.error || "Registration failed.");
     }
+  } catch (err) {
+    console.error(err);
+    setMessage("Server error. Try again later.");
+  } finally {
+    setLoading(false);
+  }
+};
 
-    const formData = new FormData();
-    Array.from(files).forEach((file) => formData.append("files", file));
-
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const res = await fetch("http://localhost:8000/register", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("Registration successful!");
-        setFiles([]); // ✅ Clear the selected files
-      } else {
-        setMessage(data.error || "Registration failed.");
-      }
-    } catch (err) {
-      console.error(err);
-      setMessage("Server error. Try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div
