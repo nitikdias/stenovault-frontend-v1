@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef } from "react";
 
-const SectionEditor = ({ section, key, sections, setSections }) => {
+const SectionEditor = ({ section = {}, key, sections, setSections }) => {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -62,6 +62,11 @@ const SectionEditor = ({ section, key, sections, setSections }) => {
     }
   };
 
+  // Guard: If section is undefined or null, render a fallback
+  if (!section) {
+    return <div>No section data available.</div>;
+  }
+
   return (
     <div>
       {/* Title Row */}
@@ -69,7 +74,7 @@ const SectionEditor = ({ section, key, sections, setSections }) => {
         {section.editingTitle ? (
           <input
             type="text"
-            value={section.title}
+            value={section.title || ""}
             onChange={(e) =>
               setSections({
                 ...sections,
@@ -119,7 +124,7 @@ const SectionEditor = ({ section, key, sections, setSections }) => {
             }
             title="Click to edit title"
           >
-            {section.title}
+            {section.title || "Untitled Section"}
           </h3>
         )}
 
@@ -162,7 +167,7 @@ const SectionEditor = ({ section, key, sections, setSections }) => {
               flexShrink: 0
             }}
             title="Edit section"
-            aria-label={`Edit ${section.title} section`}
+            aria-label={`Edit ${section.title || "section"} section`}
             type="button"
           >
             ✏️
@@ -173,7 +178,7 @@ const SectionEditor = ({ section, key, sections, setSections }) => {
       {/* Content Area */}
       {section.editingContent ? (
         <textarea
-          value={section.content}
+          value={section.content || ""}
           onChange={(e) =>
             setSections({
               ...sections,

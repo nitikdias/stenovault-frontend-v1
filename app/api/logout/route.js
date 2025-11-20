@@ -20,7 +20,7 @@ export async function POST(request) {
     }
 
     console.log('🔁 Forwarding logout request to Flask backend');
-    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL ;
     const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || '';
 
     const response = await fetch(`${API_BASE_URL}/logout`, {
