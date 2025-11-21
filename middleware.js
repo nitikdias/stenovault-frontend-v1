@@ -26,7 +26,7 @@ export async function middleware(req) {
 
   try {
     // ✅ Verify session with Flask backend
-    const res = await fetch(`${API_BASE_URL}/verify-session`, {
+    const res = await fetch(`/api/proxy/devices`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
