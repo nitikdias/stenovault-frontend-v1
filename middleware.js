@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL ;
 const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
+const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY ;
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
@@ -26,11 +27,11 @@ export async function middleware(req) {
 
   try {
     // ✅ Verify session with Flask backend
-    const res = await fetch(`/api/proxy/devices`, {
+    const res = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7501/verify-session`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
-        "X-API-Key": API_KEY,
+        "Authorization": `Bearer ${TOKEN_KEY}`,
       },
       body: JSON.stringify({ session_id: sessionId }),
     });

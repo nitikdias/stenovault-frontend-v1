@@ -29,6 +29,7 @@ export default function TokenRefreshManager() {
         
         const res = await fetch("/api/refresh", {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },

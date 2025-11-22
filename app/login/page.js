@@ -9,6 +9,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY ;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,7 +23,7 @@ export default function Login() {
 
     const endpoint = isSignup
       ? `${API_BASE_URL}/registerUser`
-      : `${API_BASE_URL}/login`;
+      : `https://infer.e2enetworks.net/project/p-8621/endpoint/is-7501/login`;
 
     console.log("📤 Submitting to:", endpoint);
 
@@ -35,7 +36,7 @@ export default function Login() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": API_KEY,
+          "Authorization": `Bearer ${TOKEN_KEY}`,
         },
         credentials: "include", // ✅ Important for cookies
         body,

@@ -6,6 +6,7 @@ export async function POST(request) {
     // ✅ Await cookies() - required in Next.js 15
     const cookieStore = await cookies();
     const sessionId = cookieStore.get('session_id');
+    const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY ;
 
     if (!sessionId) {
       console.error('❌ No session_id cookie found');
@@ -20,12 +21,11 @@ export async function POST(request) {
       const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY ;
 
       // ✅ Forward request to Flask with the session_id cookie
-      const response = await fetch(`${API_BASE_URL}/refresh`, {
+      const response = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7501/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-          'X-API-Key': API_KEY,
-        'Cookie': `session_id=${sessionId.value}`,
+        'Authorization': `Bearer ${TOKEN_KEY}`,
       },
     });
 
