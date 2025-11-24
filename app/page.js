@@ -134,6 +134,7 @@ const clearBackendTranscript = async () => {
     return;
   }
   
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
   try {
     const formData = new FormData();
     formData.append("user_id", user.id);
@@ -141,8 +142,9 @@ const clearBackendTranscript = async () => {
     const response = await fetch(`${API_BASE_URL}/clear_transcript`, {
       method: "POST",
       headers: {
-        "X-API-Key": API_KEY,
+        "Authorization": `Bearer ${TOKEN_KEY}`,
       },
+      credentials: "include",
       body: formData,
     });
     
@@ -162,8 +164,12 @@ const clearBackendTranscript = async () => {
   useEffect(() => {
     if (!user) return; 
     async function fetchStats() {
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       try {
-        const res = await fetch(`${API_BASE_URL}/stats?user_id=${user.id}`, { headers: { "X-API-Key": API_KEY } });
+        const res = await fetch(`${API_BASE_URL}/stats?user_id=${user.id}`, { 
+          headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+          credentials: "include"
+        });
         if (res.ok) setStats(await res.json());
       } catch (err) { console.error("Failed to fetch stats:", err); }
     }
@@ -173,11 +179,17 @@ const clearBackendTranscript = async () => {
   // --- Transcript Polling ---
   const startTranscriptPolling = () => {
     if (!user) return;
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     const poll = async () => {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch(`${API_BASE_URL}/get_transcript`, { method: "POST", body: formData, headers: { "X-API-Key": API_KEY } });
+        const res = await fetch(`${API_BASE_URL}/get_transcript`, { 
+          method: "POST", 
+          body: formData, 
+          headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+          credentials: "include"
+        });
         if (res.ok) {
           const data = await res.json();
           setTranscript(data.transcript || '');
@@ -207,9 +219,12 @@ const clearBackendTranscript = async () => {
   const handleLanguageChange = async (e) => {
     const lang = e.target.value;
     setSelectedLanguage(lang);
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       await fetch(`${API_BASE_URL}/select_language`, {
-        method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        method: "POST", 
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include",
         body: JSON.stringify({ language_code: lang })
       });
     } catch (error) { console.error("Error setting language:", error); }
@@ -225,9 +240,12 @@ const clearBackendTranscript = async () => {
       console.error("User not authenticated");
       return;
     }
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       await fetch(`${API_BASE_URL}/update_transcript_section`, {
-        method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        method: "POST", 
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include",
         body: JSON.stringify({ meeting_id: meetingId, user_id: user.id, section_key: sectionKey, content, titles })
       });
     } catch (err) { console.error("Error saving section:", err); }
@@ -272,12 +290,14 @@ const clearBackendTranscript = async () => {
 
       console.log("Sending payload:", payload);
 
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       const res = await fetch(`${API_BASE_URL}/generate_summary`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": API_KEY,
+          "Authorization": `Bearer ${TOKEN_KEY}`,
         },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 

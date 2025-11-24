@@ -26,13 +26,14 @@ export async function middleware(req) {
   }
 
   try {
-    // ✅ Verify session with Flask backend
-    const res = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/verify-session`, {
+    // ✅ Verify session with Flask backend via proxy
+    const res = await fetch(`${req.nextUrl.origin}/api/backend/verify-session`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
         "Authorization": `Bearer ${TOKEN_KEY}`,
       },
+      credentials: "include",
       body: JSON.stringify({ session_id: sessionId }),
     });
 

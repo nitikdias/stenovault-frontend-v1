@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 const SECRET = process.env.JWT_SECRET || "supersecret";
 const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL ;
-const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
+const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY;
 
 export async function GET(req) {
   const token = req.cookies.get("token")?.value;
@@ -15,7 +15,8 @@ export async function GET(req) {
     // Try to fetch user info from backend; fallback to minimal user object
     try {
       const res = await fetch(`${API_BASE_URL}/users/${payload.id}`, {
-        headers: { "X-API-Key": API_KEY },
+        headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include"
       });
       if (res.ok) {
         const user = await res.json();

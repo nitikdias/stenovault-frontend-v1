@@ -23,7 +23,7 @@ export default function Login() {
 
     const endpoint = isSignup
       ? `${API_BASE_URL}/registerUser`
-      : `https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/login`;
+      : `/api/backend/login`; // ✅ Use proxied endpoint to avoid cross-origin cookie issues
 
     console.log("📤 Submitting to:", endpoint);
 
@@ -50,6 +50,10 @@ export default function Login() {
           setIsSignup(false);
         } else {
         console.log("✅ Login successful, storing user data...");
+        console.log("📋 Response headers:", Object.fromEntries(res.headers.entries()));
+        
+        // ✅ Check if cookie was received
+        console.log("🍪 Current cookies:", document.cookie);
 
         // ✅ Store only user info in localStorage
         localStorage.setItem("userId", data.user.id);
@@ -58,9 +62,7 @@ export default function Login() {
         localStorage.setItem("userPhone", data.user.phone || "");
 
         console.log("🚀 Redirecting to home page...");
-        
-        // ✅ Use full page reload instead of router.push
-        window.location.href = "/newEncounter";
+        router.push("/newEncounter");
       }
 
       } else {

@@ -20,6 +20,16 @@ const nextConfig = {
       },
     ];
   },
+  
+  // ✅ Proxy backend requests to avoid cross-origin cookie issues
+  async rewrites() {
+    return [
+      {
+        source: '/api/backend/:path*',
+        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

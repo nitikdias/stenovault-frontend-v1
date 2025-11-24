@@ -13,11 +13,17 @@ export default function TokenRefreshManager() {
     // ✅ Only run on client side
     if (typeof window === 'undefined') return;
 
-    // Check if user is logged in
+    // Helper function to check if session_id cookie exists
+    const hasSessionCookie = () => {
+      return document.cookie.split(';').some(cookie => cookie.trim().startsWith('session_id='));
+    };
+
+    // Check if user is logged in (both userId and session_id cookie must exist)
     const userId = localStorage.getItem("userId");
+    const hasSession = hasSessionCookie();
     
-    if (!userId) {
-      console.log("⚠️ No user logged in, skipping token refresh setup");
+    if (!userId || !hasSession) {
+      console.log("⚠️ No active session (userId or session_id cookie missing), skipping token refresh setup");
       return;
     }
 

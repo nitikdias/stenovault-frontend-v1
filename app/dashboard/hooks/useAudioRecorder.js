@@ -50,9 +50,10 @@ async function upload(blob, name, userId) {
   f.append("audio", blob, name);
   f.append("user_id", userId);
 
-
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
   return fetch(`${API_BASE_URL}/uploadchunk`, {
-    headers: { "X-API-Key": API_KEY },
+    headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+    credentials: "include",
     method: "POST",
     body: f,
   }).then((res) => {

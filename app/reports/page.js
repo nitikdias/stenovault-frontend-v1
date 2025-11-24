@@ -71,13 +71,15 @@ export default function ReportPage({ user }) {
     const fetchMeetings = async () => {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
         const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
-          "X-API-Key": API_KEY,
+          "Authorization": `Bearer ${TOKEN_KEY}`,
         },
+        credentials: "include"
         });
         if (!res.ok) throw new Error("Failed to fetch meetings");
         const data = await res.json();
@@ -98,13 +100,15 @@ export default function ReportPage({ user }) {
     const fetchStats = async () => {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
         const res = await fetch(`${API_BASE_URL}/stats?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
-          "X-API-Key": API_KEY,
+          "Authorization": `Bearer ${TOKEN_KEY}`,
         },
+        credentials: "include"
         });
         if (res.ok) {
           const data = await res.json();
@@ -143,17 +147,22 @@ export default function ReportPage({ user }) {
   };
 
   const handleSaveTranscript = async (id) => {
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       await fetch(`${API_BASE_URL}/transcripts/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include",
         body: JSON.stringify(editData),
       });
       setEditingTranscriptId(null);
 
       // Refresh meetings
       const userId = localStorage.getItem("userId");
-      const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`);
+      const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`, {
+        headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include"
+      });
       const data = await res.json();
       setMeetings(data);
       setFilteredMeetings(data);

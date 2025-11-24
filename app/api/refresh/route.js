@@ -6,7 +6,7 @@ export async function POST(request) {
     // ✅ Await cookies() - required in Next.js 15
     const cookieStore = await cookies();
     const sessionId = cookieStore.get('session_id');
-    const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY ;
+    const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY;
 
     if (!sessionId) {
       console.error('❌ No session_id cookie found');
@@ -17,16 +17,16 @@ export async function POST(request) {
     }
 
     console.log('🔁 Forwarding refresh request to Flask backend with session_id:', sessionId.value);
-    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
-    const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY ;
 
-    // ✅ Forward request to Flask with the session_id cookie
-    const response = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/refresh`, {
+    // ✅ Forward request to Flask with session_id in BOTH Cookie AND X-Session-ID header
+    // (E2E Networks proxy strips Cookie header, so X-Session-ID provides fallback)
+    const response = await fetch(`/api/backend/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TOKEN_KEY}`,
-        'Cookie': `session_id=${sessionId.value}`, // ✅ Forward the cookie to backend
+        'Authorization': `Bearer ${TOKEN_KEY}`, // ✅ E2E Networks API key
+        'X-Session-ID': sessionId.value, // ✅ Send session_id here as fallback
+        'Cookie': `session_id=${sessionId.value}`, // ✅ Also try Cookie header
       },
       credentials: 'include', // ✅ Include credentials
     });

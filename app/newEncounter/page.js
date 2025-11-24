@@ -81,9 +81,11 @@ export default function NewEncounter() {
   async function fetchStats() {
     const id = localStorage.getItem("userId");
     if (!id) return;
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const res = await fetch(`${API_BASE_URL}/stats?user_id=${id}`, {
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY }
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include"
       });
       if (res.ok) setStats(await res.json());
     } catch (err) {
@@ -100,11 +102,15 @@ export default function NewEncounter() {
   const fetchPatients = useCallback(async () => {
     const id = localStorage.getItem("userId");
     if (!id) return;
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       let url = `${API_BASE_URL}/patients?user_id=${id}`;
       if (debouncedSearchTerm) url += `&search=${debouncedSearchTerm}`;
 
-      const res = await fetch(url, { headers: { "Content-Type": "application/json", "X-API-Key": API_KEY } });
+      const res = await fetch(url, { 
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include"
+      });
       if (!res.ok) throw new Error();
       setPatients(await res.json());
     } catch (err) {
@@ -120,10 +126,12 @@ export default function NewEncounter() {
   const handleStartSession = async () => {
     if (!userId || !selectedPatient) return alert("Select user & patient");
     setLoading(true);
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const res = await fetch(`${API_BASE_URL}/new_encounter`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include",
         body: JSON.stringify({ user_id: userId, patient_id: selectedPatient.id })
       });
 
@@ -145,13 +153,15 @@ export default function NewEncounter() {
 
   const handleCreatePatient = async (e) => {
     e.preventDefault();
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const user_id = localStorage.getItem("userId");
       if (!user_id) return alert("User not found");
 
       const res = await fetch(`${API_BASE_URL}/patients`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        credentials: "include",
         body: JSON.stringify({ ...newPatient, age: Number(newPatient.age), user_id })
       });
 
