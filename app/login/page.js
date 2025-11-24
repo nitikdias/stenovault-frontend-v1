@@ -22,7 +22,7 @@ export default function Login() {
     const phone = formData.get("phone");
 
     const endpoint = isSignup
-      ? `${API_BASE_URL}/registerUser`
+      ? `/api/backend/registerUser`
       : `/api/backend/login`; // ✅ Use proxied endpoint to avoid cross-origin cookie issues
 
     console.log("📤 Submitting to:", endpoint);

@@ -26,8 +26,13 @@ const SectionEditor = ({ section = {}, key, sections, setSections }) => {
           formData.append("audio", audioBlob, "recording.wav");
 
           try {
-            const response = await fetch("/dictate", {
+            const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+            const response = await fetch("/api/whisper/whisper-dictate", {
               method: "POST",
+              headers: {
+                "Authorization": `Bearer ${TOKEN_KEY}`
+              },
+              credentials: "include",
               body: formData
             });
 

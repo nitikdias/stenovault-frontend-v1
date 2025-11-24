@@ -12,7 +12,7 @@ export async function POST(req) {
   const body = await req.json();
 
   try {
-    const res = await fetch(`${API_BASE_URL}/register`, {
+    const res = await fetch(`/api/backend/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
       credentials: "include",

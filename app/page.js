@@ -139,7 +139,7 @@ const clearBackendTranscript = async () => {
     const formData = new FormData();
     formData.append("user_id", user.id);
     
-    const response = await fetch(`${API_BASE_URL}/clear_transcript`, {
+    const response = await fetch(`/api/backend/clear_transcript`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${TOKEN_KEY}`,
@@ -166,7 +166,7 @@ const clearBackendTranscript = async () => {
     async function fetchStats() {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       try {
-        const res = await fetch(`${API_BASE_URL}/stats?user_id=${user.id}`, { 
+        const res = await fetch(`/api/backend/stats?user_id=${user.id}`, { 
           headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
           credentials: "include"
         });
@@ -184,7 +184,7 @@ const clearBackendTranscript = async () => {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch(`${API_BASE_URL}/get_transcript`, { 
+        const res = await fetch(`/api/backend/get_transcript`, { 
           method: "POST", 
           body: formData, 
           headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
@@ -221,7 +221,7 @@ const clearBackendTranscript = async () => {
     setSelectedLanguage(lang);
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      await fetch(`${API_BASE_URL}/select_language`, {
+      await fetch(`/api/backend/select_language`, {
         method: "POST", 
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include",
@@ -242,7 +242,7 @@ const clearBackendTranscript = async () => {
     }
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      await fetch(`${API_BASE_URL}/update_transcript_section`, {
+      await fetch(`/api/backend/update_transcript_section`, {
         method: "POST", 
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include",
@@ -291,7 +291,7 @@ const clearBackendTranscript = async () => {
       console.log("Sending payload:", payload);
 
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-      const res = await fetch(`${API_BASE_URL}/generate_summary`, {
+      const res = await fetch(`/api/backend/generate_summary`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

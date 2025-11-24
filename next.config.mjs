@@ -28,6 +28,10 @@ const nextConfig = {
         source: '/api/backend/:path*',
         destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/:path*',
       },
+      {
+        source: '/api/whisper/:path*',
+        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7503/:path*',
+      },
     ];
   },
 };

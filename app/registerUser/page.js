@@ -51,9 +51,14 @@ export default function Register({ stats }) {
   setLoading(true);
   setMessage("");
 
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
   try {
-    const res = await fetch(`${API_BASE_URL}/register`, {
+    const res = await fetch(`/api/backend/register`, {
       method: "POST",
+      headers: {
+        "Authorization": `Bearer ${TOKEN_KEY}`,
+      },
+      credentials: "include",
       body: formData,
     });
 

@@ -83,7 +83,7 @@ export default function NewEncounter() {
     if (!id) return;
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      const res = await fetch(`${API_BASE_URL}/stats?user_id=${id}`, {
+      const res = await fetch(`/api/backend/stats?user_id=${id}`, {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include"
       });
@@ -104,7 +104,7 @@ export default function NewEncounter() {
     if (!id) return;
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      let url = `${API_BASE_URL}/patients?user_id=${id}`;
+      let url = `/api/backend/patients?user_id=${id}`;
       if (debouncedSearchTerm) url += `&search=${debouncedSearchTerm}`;
 
       const res = await fetch(url, { 
@@ -128,7 +128,7 @@ export default function NewEncounter() {
     setLoading(true);
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      const res = await fetch(`${API_BASE_URL}/new_encounter`, {
+      const res = await fetch(`/api/backend/new_encounter`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include",
@@ -158,7 +158,7 @@ export default function NewEncounter() {
       const user_id = localStorage.getItem("userId");
       if (!user_id) return alert("User not found");
 
-      const res = await fetch(`${API_BASE_URL}/patients`, {
+      const res = await fetch(`/api/backend/patients`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include",

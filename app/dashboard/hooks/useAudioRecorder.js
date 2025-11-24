@@ -51,7 +51,7 @@ async function upload(blob, name, userId) {
   f.append("user_id", userId);
 
   const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-  return fetch(`${API_BASE_URL}/uploadchunk`, {
+  return fetch(`/api/backend/uploadchunk`, {
     headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
     credentials: "include",
     method: "POST",

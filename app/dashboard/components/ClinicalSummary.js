@@ -6,7 +6,6 @@ import { useUser } from '@/context/userContext';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY || "";
-const INFER_URL = process.env.NEXT_PUBLIC_INFER_URL || "";
 
 // --- WAV Conversion Utilities (unchanged) ---
 async function convertWebMToWav(webmBlob) {
@@ -100,9 +99,10 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
             formData.append("audio", wavBlob, "dictation.wav");
             formData.append("user_id", userId);
 
-            const response = await fetch(`${INFER_URL}`, {
-              headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+            const response = await fetch("/api/whisper/whisper-dictate", {
               method: "POST",
+              headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+              credentials: "include",
               body: formData,
             });
 

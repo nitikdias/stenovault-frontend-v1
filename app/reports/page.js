@@ -74,7 +74,7 @@ export default function ReportPage({ user }) {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`,{
+        const res = await fetch(`/api/backend/meetings?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${TOKEN_KEY}`,
@@ -103,7 +103,7 @@ export default function ReportPage({ user }) {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/stats?user_id=${userId}`,{
+        const res = await fetch(`/api/backend/stats?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${TOKEN_KEY}`,
@@ -149,7 +149,7 @@ export default function ReportPage({ user }) {
   const handleSaveTranscript = async (id) => {
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      await fetch(`${API_BASE_URL}/transcripts/${id}`, {
+      await fetch(`/api/backend/transcripts/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include",
@@ -159,7 +159,7 @@ export default function ReportPage({ user }) {
 
       // Refresh meetings
       const userId = localStorage.getItem("userId");
-      const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`, {
+      const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
         headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include"
       });
