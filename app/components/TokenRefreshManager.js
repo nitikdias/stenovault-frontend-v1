@@ -7,6 +7,7 @@ export default function TokenRefreshManager() {
   const router = useRouter();
   const intervalRef = useRef(null);
   const timeoutRef = useRef(null);
+  const failureCountRef = useRef(0); // ✅ Track consecutive failures
 
   useEffect(() => {
     // ✅ Only run on client side
@@ -36,20 +37,31 @@ export default function TokenRefreshManager() {
         });
 
         if (!res.ok) {
+          failureCountRef.current += 1;
           const errorData = await res.json();
-          console.error("❌ Token refresh failed:", errorData.error);
+          console.error(`❌ Token refresh failed (attempt ${failureCountRef.current}):`, errorData.error);
           
-          // Clear storage and redirect to login
-          console.warn("⚠️ Session expired, logging out...");
-          localStorage.clear();
-          
-          // Clear intervals before redirect
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          
-          router.push("/login");
+          // ✅ Only logout after 3 consecutive failures
+          if (failureCountRef.current >= 3) {
+            console.error("❌ 3 consecutive refresh failures, logging out...");
+            localStorage.clear();
+            
+            // Clear intervals before redirect
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            
+            router.push("/login");
+          } else {
+            console.warn(`⚠️ Will retry on next interval (${3 - failureCountRef.current} attempts remaining)`);
+          }
           return false;
         }
+
+        // ✅ Reset failure count on success
+        if (failureCountRef.current > 0) {
+          console.log(`✅ Refresh recovered after ${failureCountRef.current} failures`);
+        }
+        failureCountRef.current = 0;
 
         const data = await res.json();
         console.log(`✅ [${new Date().toLocaleTimeString()}] Token refreshed successfully`);
@@ -57,10 +69,21 @@ export default function TokenRefreshManager() {
         return true;
         
       } catch (err) {
-        console.error("💥 Error during token refresh:", err);
+        failureCountRef.current += 1;
+        console.error(`💥 Error during token refresh (attempt ${failureCountRef.current}):`, err);
         
-        // Don't logout on network errors, just log and retry on next interval
-        console.warn("⚠️ Network error during refresh, will retry in 50s");
+        // ✅ Only logout after 3 consecutive failures
+        if (failureCountRef.current >= 3) {
+          console.error("❌ 3 consecutive refresh failures, logging out...");
+          localStorage.clear();
+          
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          
+          router.push("/login");
+        } else {
+          console.warn(`⚠️ Network error, will retry in 50s (${3 - failureCountRef.current} attempts remaining)`);
+        }
         return false;
       }
     };

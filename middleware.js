@@ -39,19 +39,17 @@ export async function middleware(req) {
     if (!res.ok) {
       console.warn("❌ Session verification failed, redirecting to /login");
       
-      // Clear the invalid cookie
-      const response = NextResponse.redirect(new URL("/login", req.url));
-      response.cookies.delete("session_id");
-      return response;
+      // ✅ Don't delete cookie here - let backend/refresh handle it
+      // This prevents premature cookie deletion during refresh cycles
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     const data = await res.json();
     if (!data.valid) {
       console.warn("⚠️ Invalid session, redirecting to /login");
       
-      const response = NextResponse.redirect(new URL("/login", req.url));
-      response.cookies.delete("session_id");
-      return response;
+      // ✅ Don't delete cookie here - let backend/refresh handle it
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     console.log("✅ Valid session for user:", data.user_id);

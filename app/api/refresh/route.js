@@ -16,17 +16,19 @@ export async function POST(request) {
       );
     }
 
-    console.log('🔁 Forwarding refresh request to Flask backend');
-      const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
-      const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY ;
+    console.log('🔁 Forwarding refresh request to Flask backend with session_id:', sessionId.value);
+    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+    const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY ;
 
-      // ✅ Forward request to Flask with the session_id cookie
-      const response = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/refresh`, {
+    // ✅ Forward request to Flask with the session_id cookie
+    const response = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${TOKEN_KEY}`,
+        'Cookie': `session_id=${sessionId.value}`, // ✅ Forward the cookie to backend
       },
+      credentials: 'include', // ✅ Include credentials
     });
 
     if (!response.ok) {
@@ -43,21 +45,9 @@ export async function POST(request) {
     
     console.log('✅ Token refresh successful, expires in:', expiresIn, 'seconds');
     
-    // ✅ Create response
-    const nextResponse = NextResponse.json(data);
-    
-    // ✅ Update the session_id cookie with new expiration
-    nextResponse.cookies.set('session_id', sessionId.value, {
-      httpOnly: false,
-      secure: false,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: expiresIn
-    });
-    
-    console.log('✅ Updated session_id cookie with new expiration:', expiresIn + 's');
-    
-    return nextResponse;
+    // ✅ Backend already sets the cookie with correct settings via Set-Cookie header
+    // ✅ Just forward the response - don't recreate the cookie
+    return NextResponse.json(data);
     
   } catch (error) {
     console.error('💥 Refresh error:', error);
