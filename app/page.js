@@ -21,6 +21,13 @@ export default function App() {
   const { canRecord, setCanRecord } = useRecording();
   const { user, loading } = useUser(); 
   
+  // Debug logging
+  useEffect(() => {
+    console.log("🔍 Debug - User state:", user);
+    console.log("🔍 Debug - Loading state:", loading);
+    console.log("🔍 Debug - LocalStorage userId:", localStorage.getItem("userId"));
+  }, [user, loading]);
+  
   const [stats, setStats] = useState({ today: 0, week: 0 });
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [transcript, setTranscript] = useState('');
