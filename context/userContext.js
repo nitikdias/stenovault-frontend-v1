@@ -12,19 +12,46 @@ export function UserProvider({ children }) {
   const [loading, setLoading] = useState(true); // Add a loading state
 
   useEffect(() => {
-    // This logic now lives inside the context provider
-    const storedUserId = localStorage.getItem('userId');
-    
-    if (storedUserId) {
-      // Build the user object from everything you've stored
-      setUser({
-        id: storedUserId,
-        email: localStorage.getItem('userEmail'),
-        name: localStorage.getItem('userName'),
-        phone: localStorage.getItem('userPhone')
-      });
-    }
-    setLoading(false); // Finished loading
+    // Function to load user from localStorage
+    const loadUser = () => {
+      const storedUserId = localStorage.getItem('userId');
+      
+      if (storedUserId) {
+        // Build the user object from everything you've stored
+        setUser({
+          id: storedUserId,
+          email: localStorage.getItem('userEmail'),
+          name: localStorage.getItem('userName'),
+          phone: localStorage.getItem('userPhone')
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false); // Finished loading
+    };
+
+    // Initial load
+    loadUser();
+
+    // Listen for storage changes (e.g., from login in another tab or after logout)
+    const handleStorageChange = (e) => {
+      if (e.key === 'userId' || e.key === null) {
+        loadUser();
+      }
+    };
+
+    // Listen for custom event when login happens in same tab
+    const handleUserUpdate = () => {
+      loadUser();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userUpdated', handleUserUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userUpdated', handleUserUpdate);
+    };
   }, []); // Empty dependency array means this runs once on mount
 
   // The value will contain the user object and the loading state

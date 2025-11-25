@@ -393,6 +393,8 @@ const clearBackendTranscript = async () => {
 
     if (res.ok) {
       localStorage.clear();
+      // ✅ Notify UserContext that user has been cleared
+      window.dispatchEvent(new Event('userUpdated'));
       window.location.href = "/login";
     } else {
       const errorData = await res.json();

@@ -61,6 +61,9 @@ export default function Login() {
         localStorage.setItem("userEmail", data.user.email);
         localStorage.setItem("userPhone", data.user.phone || "");
 
+        // ✅ Notify UserContext that user data has been updated
+        window.dispatchEvent(new Event('userUpdated'));
+
         console.log("🚀 Redirecting to home page...");
         router.push("/newEncounter");
       }
