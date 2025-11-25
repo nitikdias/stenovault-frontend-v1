@@ -219,15 +219,41 @@ const clearBackendTranscript = async () => {
   const handleLanguageChange = async (e) => {
     const lang = e.target.value;
     setSelectedLanguage(lang);
+    
+    if (!user?.id) {
+      console.error("Cannot set language: No user ID");
+      toast.error("Please log in to change language");
+      return;
+    }
+    
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      await fetch(`/api/backend/select_language`, {
+      const response = await fetch(`/api/backend/select_language`, {
         method: "POST", 
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${TOKEN_KEY}` 
+        },
         credentials: "include",
-        body: JSON.stringify({ language_code: lang })
+        body: JSON.stringify({ 
+          language_code: lang,
+          user_id: user.id  // ✅ Add user_id
+        })
       });
-    } catch (error) { console.error("Error setting language:", error); }
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("✅ Language set:", data);
+        toast.success(`Language changed to ${lang}`);
+      } else {
+        const error = await response.json();
+        console.error("❌ Failed to set language:", error);
+        toast.error("Failed to change language");
+      }
+    } catch (error) { 
+      console.error("Error setting language:", error);
+      toast.error("Error changing language");
+    }
   };
   
   // --- Save Section ---
