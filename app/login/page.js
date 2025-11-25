@@ -212,14 +212,14 @@ export default function Login() {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                {isSignup ? "Already have an account? " : "New here? "}
+                {isSignup ? "Already have an account? " : " "}
                 <button
                   type="button"
                   className="font-medium text-blue-600 hover:underline"
                   onClick={() => setIsSignup(!isSignup)}
                   disabled={loading}
                 >
-                  {isSignup ? "Sign in" : "Create an account"}
+                  {isSignup ? "Sign in" : ""}
                 </button>
               </p>
             </div>
