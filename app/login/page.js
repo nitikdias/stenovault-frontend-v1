@@ -23,7 +23,7 @@ export default function Login() {
 
     const endpoint = isSignup
       ? `/api/backend/registerUser`
-      : `/api/backend/login`; // ✅ Use proxied endpoint to avoid cross-origin cookie issues
+      : `/api/proxy/login`; // ✅ Use proxy endpoint to set cookies on frontend domain
 
     console.log("📤 Submitting to:", endpoint);
 
@@ -36,7 +36,6 @@ export default function Login() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${TOKEN_KEY}`,
         },
         credentials: "include", // ✅ Important for cookies
         body,
