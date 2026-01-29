@@ -8,16 +8,15 @@ import { useMeeting } from '@/context/meetingContext';
 import { useUser } from "@/context/userContext";
 import { useRecording } from '@/context/recordingContext';
 import { useAudioRecorder } from './dashboard/hooks/useAudioRecorder';
-import Sidebar from './sidebar/page'; 
 import Header from './header/page';
 import RecordingPanel from './dashboard/components/RecordingPanel';
-import ClinicalSummary from './dashboard/components/ClinicalSummary';
+import AgendaMinutes from './dashboard/components/AgendaMinutes';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export default function App() {
-  const { meetingId } = useMeeting();
+  const { meetingId, setMeetingId } = useMeeting();
   const { canRecord, setCanRecord } = useRecording();
   const { user, loading } = useUser(); 
   
@@ -34,62 +33,7 @@ export default function App() {
   const [summary, setSummary] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [readyForSummary, setReadyForSummary] = useState(false);
-  const [sections, setSections] = useState({
-    hpi: { 
-      title: "History of presenting complaints", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    pmh: { 
-      title: "Past Medical/Surgical History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    familyHistory: { 
-      title: "Family History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    lifestyle: { 
-      title: "Lifestyle History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    physicalExam: { 
-      title: "Physical Examination", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    investigations: { 
-      title: "Investigation Summary", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    assessment: { 
-      title: "Assessment and Discussion", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    management: { 
-      title: "Management Plan", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-    prescription: { 
-      title: "Prescription", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
-    },
-  });
+  const [minutes, setMinutes] = useState([]);
 
 
   const {
@@ -112,19 +56,8 @@ useEffect(() => {
     // Clear frontend transcript
     setTranscript("");
     
-    // Clear content but keep custom titles
-    setSections((prevSections) => {
-      const clearedSections = {};
-      Object.keys(prevSections).forEach((key) => {
-        clearedSections[key] = {
-          title: prevSections[key].title,
-          content: "",
-          editingTitle: false,
-          editingContent: false,
-        };
-      });
-      return clearedSections;
-    });
+    // Clear minutes
+    setMinutes([]);
     
     // Reset other states
     setSummary("");
@@ -153,6 +86,7 @@ const clearBackendTranscript = async () => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": API_KEY
       },
       credentials: "include",
       body: formData,
@@ -177,7 +111,7 @@ const clearBackendTranscript = async () => {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       try {
         const res = await fetch(`/api/backend/stats?user_id=${user.id}`, { 
-          headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+          headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": API_KEY },
           credentials: "include"
         });
         if (res.ok) setStats(await res.json());
@@ -197,7 +131,7 @@ const clearBackendTranscript = async () => {
         const res = await fetch(`/api/backend/get_transcript`, { 
           method: "POST", 
           body: formData, 
-          headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+          headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": API_KEY },
           credentials: "include"
         });
         if (res.ok) {
@@ -217,13 +151,15 @@ const clearBackendTranscript = async () => {
   };
 
   useEffect(() => {
-    if (recording && !paused && user) { 
+    if (canRecord && user) { 
+      // Start polling when session is active (canRecord = true)
       startTranscriptPolling();
     } else {
+      // Stop polling when session ends (canRecord = false)
       stopTranscriptPolling();
     }
     return () => stopTranscriptPolling();
-  }, [recording, paused, user]);
+  }, [canRecord, user]);
 
   // --- Language ---
   const handleLanguageChange = async (e) => {
@@ -242,7 +178,8 @@ const clearBackendTranscript = async () => {
         method: "POST", 
         headers: { 
           "Content-Type": "application/json", 
-          "Authorization": `Bearer ${TOKEN_KEY}` 
+          "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY
         },
         credentials: "include",
         body: JSON.stringify({ 
@@ -266,117 +203,10 @@ const clearBackendTranscript = async () => {
     }
   };
   
-  // --- Save Section ---
-  const saveSectionToDB = async (sectionKey, content) => {
-    if (!meetingId) return;
-    const titles = Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.title]));
-    const userId = user?.id;
-
-    if (!userId) {
-      console.error("User not authenticated");
-      return;
-    }
-    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-    try {
-      await fetch(`/api/backend/update_transcript_section`, {
-        method: "POST", 
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
-        credentials: "include",
-        body: JSON.stringify({ meeting_id: meetingId, user_id: user.id, section_key: sectionKey, content, titles })
-      });
-    } catch (err) { console.error("Error saving section:", err); }
-  };
-
-// --- Generate Summary ---
+// --- Generate Summary (deprecated - using agenda minutes now) ---
   const generateSummary = async () => {
-    if (!meetingId) {
-      toast.error("No active meeting.");
-      return;
-    }
-
-    // Validate meeting_id is a valid integer
-    const parsedMeetingId = parseInt(meetingId, 10);
-    if (isNaN(parsedMeetingId) || parsedMeetingId < 1) {
-      toast.error("Invalid meeting ID.");
-      console.error("Invalid meetingId:", meetingId, "Type:", typeof meetingId);
-      return;
-    }
-
-    if (loading) {
-      toast.info("Loading user info...");
-      return;
-    }
-
-    const userId = user?.id || "system";
-    setIsGeneratingSummary(true);
-
-    try {
-      // Prepare sections payload (send only titles as dict)
-      const sectionsPayload = Object.fromEntries(
-        Object.entries(sections).map(([k, v]) => [k, v.title])
-      );
-
-      const payload = {
-        meeting_id: parsedMeetingId,  // Use validated integer
-        user_id: String(userId),
-        transcript: transcript || "",
-        sections: sectionsPayload,
-        selected_language: selectedLanguage || "en",
-      };
-
-      console.log("Sending payload:", payload);
-
-      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-      const res = await fetch(`/api/backend/generate_summary`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${TOKEN_KEY}`,
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("Backend error:", errText);
-        toast.error("Failed to generate summary.");
-        return;
-      }
-
-      const data = await res.json();
-      console.log("Summary API response:", data);
-
-      // Backend now returns 'sections' dict
-      if (!data || !data.sections) {
-        toast.error("No sections returned.");
-        return;
-      }
-
-      // Update sections with generated content
-      const updatedSections = { ...sections };
-      Object.keys(updatedSections).forEach((key) => {
-        if (data.sections[key]) {
-          updatedSections[key].content = data.sections[key] || "";
-        }
-      });
-
-      setSections(updatedSections);
-      toast.success("Summary loaded into sections!");
-
-      // Auto-save to database
-      for (const key in updatedSections) {
-        if (updatedSections[key].content.trim()) {
-          await saveSectionToDB(key, updatedSections[key].content);
-        }
-      }
-
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      toast.error("Server error generating summary.");
-    } finally {
-      setIsGeneratingSummary(false);
-    }
+    toast.info("Please use the Agenda Minutes feature to generate meeting documentation.");
+    return;
   };
 
 
@@ -387,6 +217,7 @@ const clearBackendTranscript = async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-API-KEY": API_KEY
       },
       credentials: "include",  // ✅ Include cookies
     });
@@ -420,9 +251,28 @@ const clearBackendTranscript = async () => {
     setCanRecord(true);
   };
   
-  const handleGenerateSummary = () => {
-    generateSummary();
-    setCanRecord(false);
+  const handleGenerateSummary = async () => {
+    try {
+      await generateSummary();
+      
+      // End session after summary is generated
+      console.log("📝 Summary generated, ending session...");
+      setCanRecord(false);
+      setMeetingId(null);
+      localStorage.removeItem("meetingId");
+      toast.success("Session ended successfully!");
+      
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      toast.error("Failed to generate summary");
+    }
+  };
+
+  const handleMinutesSaved = () => {
+    // This is called after minutes are saved successfully
+    // Reset any additional state if needed
+    setReadyForSummary(false);
+    console.log("✅ Minutes saved callback - session ended");
   };
 
   // --- UI ---
@@ -435,34 +285,31 @@ const clearBackendTranscript = async () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen font-sans overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <ToastContainer position="top-right" autoClose={2000} hideProgressBar />
       <Header user={user} handleLogout={handleLogout} /> 
-      <div className="flex flex-col md:flex-row">
-        <Sidebar stats={stats} />
-        <div className="flex-1 p-4 sm:p-6 pt-20 md:pt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[calc(100vh-150px)]">
-            <RecordingPanel
-              user={user}
-              userLoading={loading}
-              mics={mics} deviceId={deviceId} setDeviceId={setDeviceId}
-              recording={recording} paused={paused} recordingTime={recordingTime}
-              startRec={handleStartRec} stopRec={handleStopRec} pauseRec={pauseRec} resumeRec={resumeRec}
-              transcript={transcript}
-              selectedLanguage={selectedLanguage}
-              handleLanguageChange={handleLanguageChange}
-              canRecord={canRecord}
-              readyForSummary={readyForSummary}
-              setReadyForSummary={setReadyForSummary}
-              handleGenerateSummary={handleGenerateSummary}
-            />
-            <ClinicalSummary
-              sections={sections}
-              setSections={setSections}
-              saveSectionToDB={saveSectionToDB}
-              transcript={transcript}
-            />
-          </div>
+      <div className="flex-1 p-4 sm:p-6 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 h-full">
+          <RecordingPanel
+            user={user}
+            userLoading={loading}
+            mics={mics} deviceId={deviceId} setDeviceId={setDeviceId}
+            recording={recording} paused={paused} recordingTime={recordingTime}
+            startRec={handleStartRec} stopRec={handleStopRec} pauseRec={pauseRec} resumeRec={resumeRec}
+            transcript={transcript}
+            selectedLanguage={selectedLanguage}
+            handleLanguageChange={handleLanguageChange}
+            canRecord={canRecord}
+            readyForSummary={readyForSummary}
+            setReadyForSummary={setReadyForSummary}
+            handleGenerateSummary={handleGenerateSummary}
+          />
+          <AgendaMinutes
+            minutes={minutes}
+            setMinutes={setMinutes}
+            transcript={transcript}
+            onMinutesSaved={handleMinutesSaved}
+          />
         </div>
       </div>
     </div>

@@ -27,6 +27,7 @@ export async function POST(req) {
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${TOKEN_KEY}`,
+      "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || ""
     };
     
     console.log('📋 Request headers:', { ...headers, Authorization: 'Bearer ***' + TOKEN_KEY.slice(-20) });

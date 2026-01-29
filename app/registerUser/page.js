@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Sidebar from "../sidebar/page"; // adjust path
 import Header from "../header/page"; // adjust path
 import { usePathname } from "next/navigation";
 
@@ -57,6 +56,7 @@ export default function Register({ stats }) {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || ""
       },
       credentials: "include",
       body: formData,
@@ -90,20 +90,15 @@ export default function Register({ stats }) {
       {/* Header */}
       <Header />
 
-      <div style={{ display: "flex", flex: 1 }}>
-        {/* Sidebar */}
-        <Sidebar stats={stats} />
-
-        {/* Main Content */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "20px",
-          }}
-        >
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "20px",
+        }}
+      >
           <div
             style={{
               width: "100%",
@@ -197,7 +192,6 @@ export default function Register({ stats }) {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

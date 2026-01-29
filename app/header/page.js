@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function Header({ handleLogout }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -34,6 +35,19 @@ export default function Header({ handleLogout }) {
     return "DS";
   };
 
+  const navButtonStyle = (path) => ({
+    padding: '8px 16px',
+    backgroundColor: pathname === path ? '#ffffff20' : 'transparent',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap'
+  });
+
   return (
     <div
       style={{
@@ -46,33 +60,75 @@ export default function Header({ handleLogout }) {
       }}
     >
       {/* Left section */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <div
-          style={{
-            width: '52px',
-            height: '32px',
-            backgroundColor: '#ffffffff',
-            borderRadius: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <span style={{ display: 'inline-block', width: '24px', height: '24px' }}>
-            <img 
-              src="/images/app-logo.png" 
-              alt="Logo" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-            />
-          </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div
+            style={{
+              width: '52px',
+              height: '32px',
+              backgroundColor: '#ffffffff',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <span style={{ display: 'inline-block', width: '24px', height: '24px' }}>
+              <img 
+                src="/images/app-logo.png" 
+                alt="Logo" 
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+              />
+            </span>
+          </div>
+
+          <div className="hidden md:block">
+            <h1 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#ffffffff' }}>
+              Stenovault
+            </h1>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Ambient Listening</p>
+          </div>
         </div>
 
-        <div className="hidden md:block">
-          <h1 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#ffffffff' }}>
-            ARCA SPARK
-          </h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Ambient Listening</p>
-        </div>
+        {/* Navigation buttons */}
+        <nav className="hidden md:flex" style={{ gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => router.push("/")}
+            style={navButtonStyle("/")}
+            onMouseEnter={(e) => {
+              if (pathname !== "/") e.currentTarget.style.backgroundColor = '#ffffff10';
+            }}
+            onMouseLeave={(e) => {
+              if (pathname !== "/") e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            Home
+          </button>
+          <button
+            onClick={() => router.push("/register-speaker")}
+            style={navButtonStyle("/register-speaker")}
+            onMouseEnter={(e) => {
+              if (pathname !== "/register-speaker") e.currentTarget.style.backgroundColor = '#ffffff10';
+            }}
+            onMouseLeave={(e) => {
+              if (pathname !== "/register-speaker") e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            Register Speaker
+          </button>
+          {/* <button
+            onClick={() => router.push("/newEncounter")}
+            style={navButtonStyle("/newEncounter")}
+            onMouseEnter={(e) => {
+              if (pathname !== "/newEncounter") e.currentTarget.style.backgroundColor = '#ffffff10';
+            }}
+            onMouseLeave={(e) => {
+              if (pathname !== "/newEncounter") e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            Meetings
+          </button> */}
+        </nav>
       </div>
 
       {/* Right section */}
@@ -173,11 +229,52 @@ export default function Header({ handleLogout }) {
                 minWidth: "180px"
               }}
             >
+              <button
+                onClick={() => {
+                  router.push("/");
+                  setDropdownOpen(false);
+                }}
+                style={{
+                  background: pathname === "/" ? "#012537" : "transparent",
+                  color: pathname === "/" ? "white" : "black",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px 12px",
+                  width: "100%",
+                  textAlign: "left",
+                  fontSize: "14px",
+                  borderRadius: "4px",
+                  marginBottom: "4px"
+                }}
+              >
+                Home
+              </button>
+              <button
+                onClick={() => {
+                  router.push("/newEncounter");
+                  setDropdownOpen(false);
+                }}
+                style={{
+                  background: pathname === "/newEncounter" ? "#012537" : "transparent",
+                  color: pathname === "/newEncounter" ? "white" : "black",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px 12px",
+                  width: "100%",
+                  textAlign: "left",
+                  fontSize: "14px",
+                  borderRadius: "4px",
+                  marginBottom: "4px"
+                }}
+              >
+                Meetings
+              </button>
               <div style={{ 
                 padding: "8px 12px", 
                 fontSize: "13px", 
                 color: "#64748b", 
-                borderBottom: "1px solid #e2e8f0", 
+                borderTop: "1px solid #e2e8f0", 
+                marginTop: "4px",
                 marginBottom: "4px",
                 wordBreak: "break-word"
               }}>

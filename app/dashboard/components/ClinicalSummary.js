@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { generatePDF } from '../utils/pdfGenerator'; 
+import { generateDOCX } from '../utils/docxGenerator'; 
 import { useUser } from '@/context/userContext';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -101,7 +101,7 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
 
             const response = await fetch("/api/whisper/whisper-dictate", {
               method: "POST",
-              headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+              headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": API_KEY },
               credentials: "include",
               body: formData,
             });
@@ -375,11 +375,11 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
               <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
             </button>
             <button
-              onClick={() => generatePDF(sections, transcript)}
+              onClick={() => generateDOCX(sections, transcript)}
               className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
-              title="Download as PDF"
+              title="Download as DOCX"
             >
-              <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4" />
+              <img src="/images/downloads.png" alt="Save DOCX" className="w-4 h-4" />
             </button>
           </div>
         </div>

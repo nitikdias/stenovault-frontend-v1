@@ -1,69 +1,129 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function TokenRefreshManager() {
+  console.log("🏁 TokenRefreshManager: Component render started");
+  
   const router = useRouter();
   const intervalRef = useRef(null);
   const timeoutRef = useRef(null);
-  const failureCountRef = useRef(0); // ✅ Track consecutive failures
+  const failureCountRef = useRef(0);
+  const isRefreshingRef = useRef(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  console.log("📍 TokenRefreshManager: Component body executing, isAuthenticated:", isAuthenticated);
 
   useEffect(() => {
-    // ✅ Only run on client side
-    if (typeof window === 'undefined') return;
-
-    // Helper function to check if session_id cookie exists
-    const hasSessionCookie = () => {
-      return document.cookie.split(';').some(cookie => cookie.trim().startsWith('session_id='));
-    };
-
-    // Check if user is logged in (both userId and session_id cookie must exist)
-    const userId = localStorage.getItem("userId");
-    const hasSession = hasSessionCookie();
+    console.log("🔍 TokenRefreshManager: useEffect triggered, isAuthenticated:", isAuthenticated);
     
-    if (!userId || !hasSession) {
-      console.log("⚠️ No active session (userId or session_id cookie missing), skipping token refresh setup");
+    if (typeof window === 'undefined') {
+      console.log("❌ Not running on client side, skipping");
       return;
     }
 
-    console.log("🕒 Token refresh manager started - will refresh every 50 seconds");
+    const hasSessionCookie = () => {
+      const cookies = document.cookie.split(';');
+      console.log("🍪 All cookies:", cookies);
+      return cookies.some(cookie => cookie.trim().startsWith('session_id='));
+    };
 
-    // ✅ Refresh function that doesn't cause re-renders
+    const checkAuth = () => {
+      const userId = localStorage.getItem("userId");
+      const hasSession = hasSessionCookie();
+      
+      console.log("📊 User state check:");
+      console.log("   userId:", userId);
+      console.log("   hasSession:", hasSession);
+      
+      return !!(userId && hasSession);
+    };
+
+    // ✅ Check auth state immediately
+    const initialAuth = checkAuth();
+    console.log("✅ Initial auth check:", initialAuth);
+    
+    // ✅ If not authenticated, set up a polling check every 2 seconds to detect login
+    if (!initialAuth) {
+      console.log("⚠️ No active session yet, will check every 2s for login...");
+      
+      const authCheckInterval = setInterval(() => {
+        console.log("🔄 Checking for auth state change...");
+        const nowAuth = checkAuth();
+        if (nowAuth) {
+          console.log("✅ User logged in! Setting up token refresh...");
+          clearInterval(authCheckInterval);
+          setIsAuthenticated(true);
+        }
+      }, 2000);
+      
+      return () => {
+        clearInterval(authCheckInterval);
+        console.log("🛑 Auth check interval cleared");
+      };
+    }
+    
+    // ✅ If already authenticated, set up refresh timers immediately
+    console.log("✅ User already authenticated, setting up token refresh...");
+
+    console.log("🕒 Token refresh manager started");
+    console.log("   📅 Refresh schedule: Every 45 seconds");
+    console.log("   ⏰ Token expiry: 60 seconds");
+    console.log("   🛡️ Safety buffer: 15 seconds");
+
     const refreshAccessToken = async () => {
+      console.log(`\n========== REFRESH TOKEN ATTEMPT ==========`);
+      console.log(`Time: ${new Date().toLocaleTimeString()}`);
+      console.log(`Timestamp: ${new Date().toISOString()}`);
+      
+      if (isRefreshingRef.current) {
+        console.log("⏭️ Skipping refresh - already in progress");
+        return false;
+      }
+
+      isRefreshingRef.current = true;
+      console.log("🔓 Lock acquired - starting refresh");
+
       try {
-        console.log(`🔄 [${new Date().toLocaleTimeString()}] Refreshing token...`);
+        console.log(`🔄 Calling /api/refresh endpoint...`);
+        console.log(`   URL: ${window.location.origin}/api/refresh`);
+        console.log(`   Method: POST`);
+        console.log(`   Credentials: include`);
+        console.log(`   Cookies before request:`, document.cookie);
         
         const res = await fetch("/api/refresh", {
           method: "POST",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
+            "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || ""
           },
         });
+        
+        console.log(`📥 Response received from /api/refresh:`);
+        console.log(`   Status: ${res.status} ${res.statusText}`);
+        console.log(`   Headers:`, Object.fromEntries(res.headers.entries()));
 
         if (!res.ok) {
           failureCountRef.current += 1;
           const errorData = await res.json();
           console.error(`❌ Token refresh failed (attempt ${failureCountRef.current}):`, errorData.error);
           
-          // ✅ Only logout after 3 consecutive failures
           if (failureCountRef.current >= 3) {
             console.error("❌ 3 consecutive refresh failures, logging out...");
             localStorage.clear();
-            
-            // Clear intervals before redirect
             if (intervalRef.current) clearInterval(intervalRef.current);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            
+            isRefreshingRef.current = false;
             router.push("/login");
           } else {
             console.warn(`⚠️ Will retry on next interval (${3 - failureCountRef.current} attempts remaining)`);
+            isRefreshingRef.current = false;
           }
           return false;
         }
 
-        // ✅ Reset failure count on success
         if (failureCountRef.current > 0) {
           console.log(`✅ Refresh recovered after ${failureCountRef.current} failures`);
         }
@@ -71,43 +131,51 @@ export default function TokenRefreshManager() {
 
         const data = await res.json();
         console.log(`✅ [${new Date().toLocaleTimeString()}] Token refreshed successfully`);
-        console.log(`   ⏱️  Next refresh in 50 seconds (token expires in ${data.expires_in}s)`);
+        console.log(`   ⏱️  Next refresh in 45 seconds`);
+        console.log(`   🔒 Session valid until: ${new Date(Date.now() + (data.expires_in * 1000)).toLocaleTimeString()}`);
+        
+        isRefreshingRef.current = false;
         return true;
         
       } catch (err) {
         failureCountRef.current += 1;
         console.error(`💥 Error during token refresh (attempt ${failureCountRef.current}):`, err);
         
-        // ✅ Only logout after 3 consecutive failures
         if (failureCountRef.current >= 3) {
           console.error("❌ 3 consecutive refresh failures, logging out...");
           localStorage.clear();
-          
           if (intervalRef.current) clearInterval(intervalRef.current);
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          
+          isRefreshingRef.current = false;
           router.push("/login");
         } else {
-          console.warn(`⚠️ Network error, will retry in 50s (${3 - failureCountRef.current} attempts remaining)`);
+          console.warn(`⚠️ Will retry on next interval (${3 - failureCountRef.current} attempts remaining)`);
+          isRefreshingRef.current = false;
         }
         return false;
       }
     };
 
-    // ✅ Initial refresh after 5 seconds (to verify everything works)
+    console.log("⏰ Setting up timers...");
+    
     timeoutRef.current = setTimeout(() => {
-      console.log("🚀 Performing initial token refresh...");
+      console.log("🚀 ===== INITIAL REFRESH TIMER FIRED =====");
+      console.log("   Time elapsed: 10 seconds since component mount");
       refreshAccessToken();
-    }, 5000);
+    }, 10000);
+    console.log("   ✓ Initial refresh timer set (10s)");
 
-    // ✅ Set up interval to refresh every 50 seconds
     intervalRef.current = setInterval(() => {
+      console.log("🔁 ===== INTERVAL REFRESH TIMER FIRED =====");
       refreshAccessToken();
-    }, 50000); // 50 seconds
+    }, 45000);
+    console.log("   ✓ Interval timer set (45s)");
 
     console.log("✅ Token refresh intervals set up successfully");
+    console.log("   ⏰ First refresh: 10 seconds from now");
+    console.log("   🔁 Then every: 45 seconds");
+    console.log("==========================================\n");
 
-    // ✅ Cleanup function - IMPORTANT to prevent memory leaks
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -118,8 +186,7 @@ export default function TokenRefreshManager() {
         console.log("🛑 Initial refresh timeout cleared");
       }
     };
-  }, []); // ✅ Empty deps = runs once on mount, never re-runs
+  }, [router, isAuthenticated]);
 
-  // ✅ Return null - this component renders nothing
   return null;
 }

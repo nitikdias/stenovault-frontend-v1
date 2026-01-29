@@ -7,7 +7,7 @@ export async function middleware(req) {
   const { pathname } = req.nextUrl;
 
   // Only protect authenticated routes
-  const protectedPaths = ["/", "/newEncounter", "/registerUser", "/reports", "/sectionEditor", "/sidebar"];
+  const protectedPaths =["/", "/newEncounter", "/registerUser", "/reports", "/sectionEditor", "/sidebar"];
   const isProtected = protectedPaths.some(path => pathname === path || pathname.startsWith(path + "/"));
 
   if (!isProtected) return NextResponse.next();
@@ -27,11 +27,12 @@ export async function middleware(req) {
 
   try {
     // ✅ Verify session with Flask backend
-    const res = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7549/verify-session`, {
+    const res = await fetch(`http://localhost:8080/verify-session`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
         "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": API_KEY
       },
       body: JSON.stringify({ session_id: sessionId }),
     });

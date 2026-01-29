@@ -101,7 +101,7 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
 
             const response = await fetch("/api/whisper/whisper-dictate", {
               method: "POST",
-              headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+              headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": API_KEY },
               credentials: "include",
               body: formData,
             });

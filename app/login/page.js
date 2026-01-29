@@ -36,6 +36,7 @@ export default function Login() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-API-KEY": API_KEY
         },
         credentials: "include", // ✅ Important for cookies
         body,
@@ -64,7 +65,7 @@ export default function Login() {
         window.dispatchEvent(new Event('userUpdated'));
 
         console.log("🚀 Redirecting to home page...");
-        router.push("/newEncounter");
+        router.push("/");
       }
 
       } else {

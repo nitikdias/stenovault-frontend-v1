@@ -15,7 +15,7 @@ export async function GET(req) {
     // Try to fetch user info from backend; fallback to minimal user object
     try {
       const res = await fetch(`/api/backend/users/${payload.id}`, {
-        headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+        headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || "" },
         credentials: "include"
       });
       if (res.ok) {

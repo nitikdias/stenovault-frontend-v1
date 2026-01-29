@@ -28,6 +28,7 @@ export async function POST(request) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${TOKEN_KEY}`,
         'Cookie': `session_id=${sessionId.value}`,  // ✅ Send cookie
+        'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || ""
       },
     });
 

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "../sidebar/page";
 import Header from "../header/page";
-import jsPDF from "jspdf";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
+import { saveAs } from "file-saver";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useUser } from "@/context/userContext";
@@ -30,6 +30,7 @@ export default function ReportPage({ user }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || ""
         },
       });
 
@@ -78,6 +79,7 @@ export default function ReportPage({ user }) {
           headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY
         },
         credentials: "include"
         });
@@ -107,6 +109,7 @@ export default function ReportPage({ user }) {
           headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY
         },
         credentials: "include"
         });
@@ -160,7 +163,7 @@ export default function ReportPage({ user }) {
       // Refresh meetings
       const userId = localStorage.getItem("userId");
       const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
-        headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+        headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": API_KEY },
         credentials: "include"
       });
       const data = await res.json();
@@ -176,14 +179,10 @@ export default function ReportPage({ user }) {
     {/* Header */}
     <Header user={user} handleLogout={handleLogout} />
 
-    <div className="flex flex-col md:flex-row flex-1 pt-16 md:pt-0">
-      {/* Sidebar */}
-      <Sidebar stats={stats} />
-
+    <div className="flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
       {/* Main reports box */}
-      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
-        <div className="max-w-7xl bg-white shadow-md rounded-lg p-4 sm:p-6 mx-auto text-black">
-          <h1 className="text-center text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Reports</h1>
+      <div className="max-w-7xl bg-white shadow-md rounded-lg p-4 sm:p-6 mx-auto text-black">
+        <h1 className="text-center text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Reports</h1>
 
           {!selectedMeeting && (
             <input
@@ -339,148 +338,106 @@ export default function ReportPage({ user }) {
                             <img src="/images/copy.png" alt="Copy" className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
 
-                          {/* Download PDF */}
+                          {/* Download DOCX */}
                           <button
                             onClick={async () => {
                               if (!t) return;
 
-                              const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-                              const margin = 36;
-                              const pageWidth = doc.internal.pageSize.getWidth();
-                              const pageHeight = doc.internal.pageSize.getHeight();
-                              const contentWidth = pageWidth - margin * 2;
-                              const lineHeight = 1.35;
-                              const headerH = 26;
-                              const pad = 10;
+                              const children = [];
 
-                              let y = margin;
+                              // Title
+                              children.push(
+                                new Paragraph({
+                                  text: "Clinical Summary & Transcript",
+                                  heading: HeadingLevel.TITLE,
+                                  alignment: AlignmentType.CENTER,
+                                  spacing: { after: 400 },
+                                })
+                              );
 
-                              const paginateIfNeeded = (needed) => {
-                                if (y + needed > pageHeight - margin) {
-                                  doc.addPage();
-                                  y = margin;
-                                }
-                              };
+                              // Summary section (if present)
+                              if (t.summary && String(t.summary).trim()) {
+                                children.push(
+                                  new Paragraph({
+                                    text: "Summary",
+                                    heading: HeadingLevel.HEADING_1,
+                                    spacing: { before: 300, after: 200 },
+                                    shading: {
+                                      fill: "E6E6E6",
+                                    },
+                                  })
+                                );
 
-                              const renderTitle = async () => {
-                                const logoImg = new Image();
-                                logoImg.src = "/images/app-logo.png";
-                                await new Promise((r) => (logoImg.onload = r));
-                                const logoW = 40;
-                                const logoH = (logoImg.height / logoImg.width) * logoW;
-                                doc.addImage(logoImg, "PNG", pageWidth - margin - logoW, margin, logoW, logoH);
+                                const summaryText = String(t.summary).trim();
+                                const summaryLines = summaryText.split('\n');
+                                summaryLines.forEach(line => {
+                                  children.push(
+                                    new Paragraph({
+                                      text: line,
+                                      spacing: { after: 120 },
+                                    })
+                                  );
+                                });
 
-                                doc.setFont("helvetica", "bold");
-                                doc.setFontSize(20);
-                                doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 24, { align: "center" });
-                                doc.setLineWidth(0.5);
-                                doc.setDrawColor(200);
-                                doc.line(margin, margin + 34, pageWidth - margin, margin + 34);
-                                y = margin + 52;
-                              };
+                                children.push(
+                                  new Paragraph({
+                                    text: "",
+                                    spacing: { after: 200 },
+                                  })
+                                );
+                              }
 
-                              const renderSection = (title, text, headColor = [230,230,230], bodyColor = [245,245,245]) => {
-                                if (!text || !String(text).trim()) return;
-                                paginateIfNeeded(headerH + 8 + 40);
+                              // Transcript section
+                              children.push(
+                                new Paragraph({
+                                  text: "Transcript",
+                                  heading: HeadingLevel.HEADING_1,
+                                  spacing: { before: 400, after: 200 },
+                                  shading: {
+                                    fill: "E6F5FF",
+                                  },
+                                })
+                              );
 
-                                // header
-                                doc.setFillColor(...headColor);
-                                doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                doc.setFont("helvetica", "bold");
-                                doc.setFontSize(13);
-                                doc.setTextColor(33,37,51);
-                                doc.text(title, margin + pad, y + headerH - 8);
-                                y += headerH + 8;
+                              const transcriptText = t.transcript && String(t.transcript).trim()
+                                ? String(t.transcript).trim()
+                                : "Transcript will appear here...";
 
-                                // body
-                                const s = String(text).trim();
-                                doc.setFont("helvetica", "normal");
-                                doc.setFontSize(12);
-                                doc.setTextColor(0,0,0);
-                                doc.setLineHeightFactor(lineHeight);
+                              const transcriptLines = transcriptText.split('\n');
+                              transcriptLines.forEach(line => {
+                                children.push(
+                                  new Paragraph({
+                                    text: line,
+                                    spacing: { after: 120 },
+                                  })
+                                );
+                              });
 
-                                const wrapped = doc.splitTextToSize(s, contentWidth - pad*2);
-                                const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
-                                const boxH = wrapped.length * lineH + pad * 2;
+                              // Create document
+                              const doc = new Document({
+                                sections: [{
+                                  properties: {
+                                    page: {
+                                      margin: {
+                                        top: 720,
+                                        right: 720,
+                                        bottom: 720,
+                                        left: 720,
+                                      },
+                                    },
+                                  },
+                                  children: children,
+                                }],
+                              });
 
-                                paginateIfNeeded(boxH);
-                                doc.setFillColor(...bodyColor);
-                                doc.roundedRect(margin, y, contentWidth, boxH, 5, 5, "F");
-                                doc.text(wrapped, margin + pad, y + pad + 10);
-                                y += boxH + 14;
-                              };
-
-                              const renderTranscriptPage = (text) => {
-                                // force new page for transcript start
-                                doc.addPage();
-                                y = margin;
-
-                                // header
-                                doc.setFillColor(230,245,255);
-                                doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                doc.setFont("helvetica", "bold");
-                                doc.setFontSize(13);
-                                doc.setTextColor(33,37,51);
-                                doc.text("Transcript", margin + pad, y + headerH - 8);
-                                y += headerH + 8;
-
-                                // body streamed across pages
-                                const body = text && String(text).trim() ? String(text).trim() : "Transcript will appear here...";
-                                doc.setFont("helvetica", "normal");
-                                doc.setFontSize(12);
-                                doc.setTextColor(0,0,0);
-                                doc.setLineHeightFactor(lineHeight);
-
-                                const wrapped = doc.splitTextToSize(body, contentWidth - pad*2);
-                                const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
-
-                                let start = 0;
-                                while (start < wrapped.length) {
-                                  const availableH = pageHeight - margin - y - pad * 2;
-                                  const fitLines = Math.max(1, Math.floor(availableH / lineH));
-                                  const slice = wrapped.slice(start, start + fitLines);
-                                  const sliceH = slice.length * lineH + pad * 2;
-
-                                  doc.setFillColor(245,250,255);
-                                  doc.roundedRect(margin, y, contentWidth, sliceH, 5, 5, "F");
-                                  doc.text(slice, margin + pad, y + pad + 10);
-
-                                  start += fitLines;
-                                  y += sliceH + 14;
-
-                                  if (start < wrapped.length) {
-                                    doc.addPage();
-                                    y = margin;
-                                    // continuation header
-                                    doc.setFillColor(230,245,255);
-                                    doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                    doc.setFont("helvetica", "bold");
-                                    doc.setFontSize(13);
-                                    doc.setTextColor(33,37,51);
-                                    doc.text("Transcript (cont.)", margin + pad, y + headerH - 8);
-                                    y += headerH + 8;
-                                    doc.setFont("helvetica", "normal");
-                                    doc.setFontSize(12);
-                                    doc.setTextColor(0,0,0);
-                                    doc.setLineHeightFactor(lineHeight);
-                                  }
-                                }
-                              };
-
-                              await renderTitle();
-
-                              // PAGE 1: Summary section only (if present)
-                              renderSection("Summary", t.summary, [230,230,230], [245,245,245]);
-
-                              // PAGE 2+: Transcript always starts on a new page
-                              renderTranscriptPage(t.transcript);
-
-                              doc.save(`report_meeting_${selectedMeeting.id}.pdf`);
+                              // Generate and download
+                              const blob = await Packer.toBlob(doc);
+                              saveAs(blob, `report_meeting_${selectedMeeting.id}.docx`);
                             }}
                             className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Download PDF"
+                            title="Download DOCX"
                           >
-                            <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <img src="/images/downloads.png" alt="Save DOCX" className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
 
                         </div>
@@ -495,7 +452,6 @@ export default function ReportPage({ user }) {
           )}
         </div>
       </div>
-    </div>
 
     {/* Toast Container */}
     <ToastContainer position="top-right" autoClose={2000} hideProgressBar />

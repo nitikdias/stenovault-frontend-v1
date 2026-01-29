@@ -4,7 +4,6 @@ import { UserProvider } from '@/context/userContext';
 import { MeetingProvider } from '@/context/meetingContext';
 import { RecordingProvider } from "@/context/recordingContext";
 import ClientLayout from "./ClientLayout";
-import TokenRefreshManager from "./components/TokenRefreshManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "ARCA SPARK",
+  title: "STENOVAULT",
   description: "Ai ambient clinical note taking",
 };
 
@@ -29,8 +28,7 @@ export default function RootLayout({ children }) {
         <UserProvider>
           <MeetingProvider>
             <ClientLayout>
-              <TokenRefreshManager/> {children}
-             
+              {children}
               </ClientLayout>
             </MeetingProvider>
         </UserProvider>
