@@ -4,9 +4,9 @@ import { useUser } from '@/context/userContext';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-const sampleRate = 48000;
+const sampleRate = 44000;
 const recordSec = 6;
-const stepSec = 3;
+const stepSec = 3 ;
 const recordLen = sampleRate * recordSec;  // 288000 samples
 const stepLen = sampleRate * stepSec;      // 240000 samples
 
@@ -80,6 +80,7 @@ export function useAudioRecorder() {
   const [deviceId, setDeviceId] = useState('');
   const [recording, setRecording] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
 
   const userIdRef = useRef(user?.id);
@@ -157,15 +158,21 @@ export function useAudioRecorder() {
     
     console.log(`📦 [emitChunk] Slice extracted: ${sliceLength} samples (${(sliceLength/sampleRate).toFixed(2)}s)`);
     
-    // 🔧 FIX: Reduce minimum threshold to 0.5 seconds
-    if (sliceLength < sampleRate * 0.5) {
-      console.warn(`⚠️ [emitChunk] Slice too small (${sliceLength} samples, ${(sliceLength/sampleRate).toFixed(2)}s), SKIPPING`);
+    if (sliceLength === 0) {
+      console.warn(`⚠️ [emitChunk] Empty slice, SKIPPING`);
       console.log(`${'='.repeat(80)}\n`);
       return;
     }
     
-    if (sliceLength === 0) {
-      console.warn(`⚠️ [emitChunk] Empty slice, SKIPPING`);
+    // 🔧 FIX: For final chunks, allow smaller segments; otherwise require minimum 0.5s
+    if (!isFinal && sliceLength < sampleRate * 0.5) {
+      console.warn(`⚠️ [emitChunk] Slice too small (${sliceLength} samples, ${(sliceLength/sampleRate).toFixed(2)}s), SKIPPING (not final chunk)`);
+      console.log(`${'='.repeat(80)}\n`);
+      return;
+    }
+    
+    if (isFinal && sliceLength < sampleRate * 0.1) {
+      console.warn(`⚠️ [emitChunk] Final chunk too small (${sliceLength} samples, ${(sliceLength/sampleRate).toFixed(2)}s < 0.1s), SKIPPING`);
       console.log(`${'='.repeat(80)}\n`);
       return;
     }
@@ -371,14 +378,58 @@ export function useAudioRecorder() {
     console.log(`🛑 [stopRec] Current chunk counter: ${chunkCounterRef.current}`);
     console.log(`🛑 [stopRec] Last emitted sample: ${lastEmittedSampleRef.current}`);
     
-    setRecording(false);
+    // Show stopping state to user
+    setStopping(true);
+    
+    // First, mark as stopping to prevent new chunks from being scheduled
     recordingRef.current = false;
-    setPaused(false);
-    stopTimer();
     
     console.log(`🛑 [stopRec] Clearing ${timeoutsRef.current.length} pending timeouts`);
     timeoutsRef.current.forEach(t => clearTimeout(t));
     timeoutsRef.current = [];
+    
+    // Process final chunk BEFORE stopping streams
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      const full = flatten(pcmBuffersRef.current);
+      const totalSamples = full.length;
+      
+      console.log(`🛑 [stopRec] Final buffer analysis:`);
+      console.log(`🛑 [stopRec]   Total samples: ${totalSamples} (${(totalSamples/sampleRate).toFixed(2)}s)`);
+      console.log(`🛑 [stopRec]   Last emitted: ${lastEmittedSampleRef.current} (${(lastEmittedSampleRef.current/sampleRate).toFixed(2)}s)`);
+      console.log(`🛑 [stopRec]   Remaining: ${totalSamples - lastEmittedSampleRef.current} samples (${((totalSamples - lastEmittedSampleRef.current)/sampleRate).toFixed(2)}s)`);
+      
+      // Emit final chunk if there's remaining audio (even small segments)
+      if (totalSamples > lastEmittedSampleRef.current) {
+        const remainingSamples = totalSamples - lastEmittedSampleRef.current;
+        console.log(`🛑 [stopRec] Emitting final chunk with ${remainingSamples} samples`);
+        
+        // Emit with isFinal=true and wait for it to be uploaded
+        const finalChunkPromise = new Promise((resolve) => {
+          emitChunk(chunkCounterRef.current, true);
+          // Give a small delay to ensure the upload is added to uploadPromisesRef
+          setTimeout(resolve, 100);
+        });
+        
+        await finalChunkPromise;
+      } else {
+        console.log(`🛑 [stopRec] No remaining audio to emit`);
+      }
+      
+      console.log(`🛑 [stopRec] Waiting for ${uploadPromisesRef.current.length} uploads to complete...`);
+      await Promise.allSettled(uploadPromisesRef.current);
+      console.log(`✅ [stopRec] All uploads completed`);
+    }
+    
+    // Add 4 second delay for final chunk processing and sequential writes
+    console.log(`🛑 [stopRec] Waiting 4 seconds for final chunk processing...`);
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    console.log(`✅ [stopRec] Processing completed, proceeding with cleanup`);
+    
+    // Now stop all streams and clean up
+    setRecording(false);
+    setStopping(false);
+    setPaused(false);
+    stopTimer();
     
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(track => track.stop());
@@ -396,27 +447,6 @@ export function useAudioRecorder() {
     }
 
     if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      const full = flatten(pcmBuffersRef.current);
-      const totalSamples = full.length;
-      
-      console.log(`🛑 [stopRec] Final buffer analysis:`);
-      console.log(`🛑 [stopRec]   Total samples: ${totalSamples} (${(totalSamples/sampleRate).toFixed(2)}s)`);
-      console.log(`🛑 [stopRec]   Last emitted: ${lastEmittedSampleRef.current} (${(lastEmittedSampleRef.current/sampleRate).toFixed(2)}s)`);
-      console.log(`🛑 [stopRec]   Remaining: ${totalSamples - lastEmittedSampleRef.current} samples (${((totalSamples - lastEmittedSampleRef.current)/sampleRate).toFixed(2)}s)`);
-      
-      // Emit final chunk if there's remaining audio
-      if (totalSamples > lastEmittedSampleRef.current) {
-        const remainingSamples = totalSamples - lastEmittedSampleRef.current;
-        console.log(`🛑 [stopRec] Emitting final chunk with ${remainingSamples} samples`);
-        emitChunk(chunkCounterRef.current, true);
-      } else {
-        console.log(`🛑 [stopRec] No remaining audio to emit`);
-      }
-      
-      console.log(`🛑 [stopRec] Waiting for ${uploadPromisesRef.current.length} uploads to complete...`);
-      await Promise.allSettled(uploadPromisesRef.current);
-      console.log(`✅ [stopRec] All uploads completed`);
-      
       try {
         await audioCtxRef.current.close();
         console.log(`🛑 [stopRec] Closed AudioContext`);
@@ -457,6 +487,7 @@ export function useAudioRecorder() {
     setDeviceId,
     recording,
     paused,
+    stopping,
     recordingTime,
     startRec,
     stopRec,

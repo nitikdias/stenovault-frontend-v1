@@ -380,13 +380,11 @@ export default function AgendaMinutes({ minutes, setMinutes, transcript, onMinut
       // End session after successful save
       console.log("📝 Minutes saved, ending session...");
       setCanRecord(false);
-      setMeetingId(null);
-      localStorage.removeItem("meetingId");
       
-      // Clear the minutes display
-      setMinutes([]);
+      // ✅ DON'T clear meetingId or minutes - keep them visible until NEW session starts
+      // Minutes will be cleared automatically when user starts a new session (handled in page.js useEffect)
       
-      toast.success("Session ended successfully!");
+      toast.success("Session ended - minutes remain visible!");
       
       // Notify parent component if callback provided
       if (onMinutesSaved) {

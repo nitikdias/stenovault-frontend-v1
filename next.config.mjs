@@ -20,20 +20,6 @@ const nextConfig = {
       },
     ];
   },
-  
-  // ✅ Proxy backend requests to avoid cross-origin cookie issues
-  async rewrites() {
-    return [
-      {
-        source: '/api/backend/:path*',
-        destination: 'http://localhost:8080/:path*',
-      },
-      {
-        source: '/api/whisper/:path*',
-        destination: 'http://localhost:8002/:path*',
-      },
-    ];
-  },
 };
 
 export default nextConfig;

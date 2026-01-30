@@ -3,458 +3,420 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../header/page";
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
-import { saveAs } from "file-saver";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useUser } from "@/context/userContext";
+import { generateAgendaMinutesDOCX } from '../dashboard/utils/docxGenerator';
+import { Download, Edit2, Save, X, Calendar, Clock, FileText } from 'lucide-react';
 
-export default function ReportPage({ user }) {
+export default function ReportPage() {
+  const { user, loading: userLoading } = useUser();
   const router = useRouter();
   const [meetings, setMeetings] = useState([]);
   const [filteredMeetings, setFilteredMeetings] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedMeetingId, setSelectedMeetingId] = useState(null);
-  const [stats, setStats] = useState({ today: 0, week: 0 });
-  const [editingTranscriptId, setEditingTranscriptId] = useState(null);
-  const [editData, setEditData] = useState({});
+  const [selectedMeeting, setSelectedMeeting] = useState(null);
+  const [editingMeetingId, setEditingMeetingId] = useState(null);
+  const [editMeetingName, setEditMeetingName] = useState("");
 
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
   const handleLogout = async () => {
     try {
-      console.log("🚪 Starting logout...");
-
-      // ✅ Call Next.js API route (which forwards to Flask)
       const res = await fetch("/api/logout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || ""
+          "X-API-KEY": API_KEY
         },
       });
 
       if (res.ok) {
-        console.log("✅ Logout successful");
-        
-        // ✅ Clear all localStorage
         localStorage.clear();
-        console.log("✅ Cleared localStorage");
-        
-        // ✅ Browser will automatically clear the session_id cookie
-        // (Next.js set max_age=0 in response)
-        
-        console.log("🔄 Redirecting to login...");
-        
-        // ✅ Redirect to login
-        router.push("/login");
-        
-        // ✅ Optional: Force full page reload after a short delay
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 100);
+        window.dispatchEvent(new Event('userUpdated'));
+        window.location.href = "/login";
       } else {
-        const errorData = await res.json();
-        console.error("❌ Logout failed:", errorData.error);
-        alert("Logout failed. Please try again.");
+        toast.error("Logout failed");
       }
     } catch (err) {
-      console.error("💥 Error during logout:", err);
-      alert("An error occurred during logout.");
+      console.error("Error during logout:", err);
+      toast.error("Logout error");
     }
   };
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-
-  // Fetch meetings
+  // Fetch all meetings with minutes and transcripts
   useEffect(() => {
-    const fetchMeetings = async () => {
-      const userId = localStorage.getItem("userId");
-      if (!userId) return;
-      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+    if (user?.id) {
+      fetchMeetings();
+    }
+  }, [user?.id]);
 
-      try {
-        const res = await fetch(`/api/backend/meetings?user_id=${userId}`,{
-          headers: {
-          "Content-Type": "application/json",
+  const fetchMeetings = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/backend/get-all-meetings?user_id=${user.id}`, {
+        method: "GET",
+        headers: {
           "Authorization": `Bearer ${TOKEN_KEY}`,
           "X-API-KEY": API_KEY
         },
-        credentials: "include"
-        });
-        if (!res.ok) throw new Error("Failed to fetch meetings");
-        const data = await res.json();
-        setMeetings(data);
-        setFilteredMeetings(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMeetings(data.meetings || []);
+        setFilteredMeetings(data.meetings || []);
+        console.log("✅ Loaded meetings:", data.meetings?.length);
+      } else {
+        console.error("Failed to load meetings");
+        toast.error("Failed to load meetings");
       }
-    };
+    } catch (error) {
+      console.error("Error loading meetings:", error);
+      toast.error("Error loading meetings");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchMeetings();
-  }, []);
-
-  // Fetch stats
-  useEffect(() => {
-    const fetchStats = async () => {
-      const userId = localStorage.getItem("userId");
-      if (!userId) return;
-      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-
-      try {
-        const res = await fetch(`/api/backend/stats?user_id=${userId}`,{
-          headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${TOKEN_KEY}`,
-          "X-API-KEY": API_KEY
-        },
-        credentials: "include"
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  // Filter meetings by patient name
+  // Filter meetings by name
   useEffect(() => {
     const filtered = meetings.filter((meeting) =>
-      meeting.patient?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      meeting.meeting_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredMeetings(filtered);
   }, [searchTerm, meetings]);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center mt-12 text-lg">Loading reports...</div>
-    );
-  }
-
-  const selectedMeeting = meetings.find((m) => m.id === selectedMeetingId);
-
-  const handleEditTranscript = (t) => {
-    setEditingTranscriptId(t.id);
-    setEditData({
-      transcript: t.transcript || "",
-      summary: t.summary || "",
-    });
+  const handleEditMeetingName = (meeting) => {
+    setEditingMeetingId(meeting.meeting_id);
+    setEditMeetingName(meeting.meeting_name || getDefaultMeetingName(meeting.created_at));
   };
 
-  const handleSaveTranscript = async (id) => {
-    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+  const handleSaveMeetingName = async (meetingId) => {
     try {
-      await fetch(`/api/backend/transcripts/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+      const response = await fetch(`/api/backend/update-meeting-name`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY
+        },
         credentials: "include",
-        body: JSON.stringify(editData),
+        body: JSON.stringify({
+          meeting_id: meetingId,
+          meeting_name: editMeetingName,
+          user_id: user.id
+        }),
       });
-      setEditingTranscriptId(null);
 
-      // Refresh meetings
-      const userId = localStorage.getItem("userId");
-      const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
-        headers: { "Authorization": `Bearer ${TOKEN_KEY}`, "X-API-KEY": API_KEY },
-        credentials: "include"
-      });
-      const data = await res.json();
-      setMeetings(data);
-      setFilteredMeetings(data);
-    } catch (err) {
-      console.error("Error saving transcript edits:", err);
+      if (response.ok) {
+        toast.success("Meeting name updated!");
+        setEditingMeetingId(null);
+        fetchMeetings(); // Refresh the list
+      } else {
+        toast.error("Failed to update meeting name");
+      }
+    } catch (error) {
+      console.error("Error updating meeting name:", error);
+      toast.error("Error updating meeting name");
     }
   };
 
+  const handleViewMeeting = (meeting) => {
+    setSelectedMeeting(meeting);
+  };
+
+  const handleDownloadMinutes = async (meeting) => {
+    try {
+      if (!meeting.minutes || meeting.minutes.length === 0) {
+        toast.error("No minutes to download");
+        return;
+      }
+
+      const blob = await generateAgendaMinutesDOCX(meeting.minutes, {
+        meetingId: meeting.meeting_id,
+        meetingName: meeting.meeting_name,
+        date: new Date(meeting.created_at).toLocaleDateString(),
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${meeting.meeting_name || getDefaultMeetingName(meeting.created_at)}_minutes.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Minutes downloaded!");
+    } catch (error) {
+      console.error("Error downloading minutes:", error);
+      toast.error("Failed to download minutes");
+    }
+  };
+
+  const handleDownloadTranscript = async (meeting) => {
+    try {
+      if (!meeting.transcript) {
+        toast.error("No transcript available");
+        return;
+      }
+
+      const blob = new Blob([meeting.transcript], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${meeting.meeting_name || getDefaultMeetingName(meeting.created_at)}_transcript.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Transcript downloaded!");
+    } catch (error) {
+      console.error("Error downloading transcript:", error);
+      toast.error("Failed to download transcript");
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getDefaultMeetingName = (dateString) => {
+    const date = new Date(dateString);
+    const datePart = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    }).replace(/\s+/g, '-');
+    const timePart = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).replace(/:/g, '-');
+    return `${datePart}_${timePart}`;
+  };
+
+  if (userLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-lg text-gray-700">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-  <div className="flex flex-col min-h-screen bg-gray-50">
-    {/* Header */}
-    <Header user={user} handleLogout={handleLogout} />
+    <div className="min-h-screen font-sans" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+      <ToastContainer position="top-right" autoClose={2000} hideProgressBar />
+      <Header user={user} handleLogout={handleLogout} />
+      
+      <div className="p-6 max-w-7xl mx-auto">
+        {!selectedMeeting ? (
+          <>
+            {/* Header */}
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-white mb-2">Past Meetings</h1>
+              <p className="text-gray-300">View and manage your meeting history</p>
+            </div>
 
-    <div className="flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
-      {/* Main reports box */}
-      <div className="max-w-7xl bg-white shadow-md rounded-lg p-4 sm:p-6 mx-auto text-black">
-        <h1 className="text-center text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Reports</h1>
-
-          {!selectedMeeting && (
+            {/* Search */}
             <input
               type="text"
-              placeholder="Search patient..."
+              placeholder="Search meetings..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base"
+              className="w-full p-3 border border-white/20 rounded-lg mb-6 bg-white/10 backdrop-blur-sm text-white placeholder-gray-400"
             />
-          )}
 
-          {!selectedMeeting && filteredMeetings.length === 0 && (
-            <p className="text-center text-gray-600 text-sm sm:text-base">No reports found.</p>
-          )}
-
-          {/* Meetings List */}
-          {!selectedMeeting &&
-            filteredMeetings.map((meeting) => (
-              <div
-                key={meeting.id}
-                className="border border-gray-300 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center gap-3"
-              >
-                <div className="flex-1">
-                  <h3 className="font-semibold text-sm sm:text-base">
-                    Patient: {meeting.patient?.name || "Unknown"}{" "}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-700 mt-1">
-                    <strong>Created At:</strong>{" "}
-                    {new Date(meeting.created_at).toLocaleString()}
-                  </p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSelectedMeetingId(meeting.id)}
-                    className="text-white px-4 py-2 rounded hover:bg-[#03405a] transition-colors text-sm sm:text-base"
-                    style={{ backgroundColor: "#012537" }}
-                  >
-                    View
-                  </button>
-                </div>
+            {/* Meetings Grid */}
+            {filteredMeetings.length === 0 ? (
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-12 text-center">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Meetings Yet</h3>
+                <p className="text-gray-300">Start a meeting to see it here</p>
               </div>
-            ))}
-
-          {/* Selected Meeting Details */}
-          {selectedMeeting && (
-            <div className="mt-4 sm:mt-6 w-full bg-gray-100 p-4 sm:p-6 rounded-lg">
-              {/* Back Button */}
-              <button
-                onClick={() => setSelectedMeetingId(null)}
-                className="text-blue-600 hover:underline text-xs sm:text-sm mb-3 sm:mb-4 flex items-center gap-1"
-              >
-                ← Back
-              </button>
-
-              {/* Patient Info */}
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">
-                Patient: {selectedMeeting.patient?.name || "Unknown"}{" "}
-                <span className="text-gray-500 text-base sm:text-lg block sm:inline mt-1 sm:mt-0">
-                  (Meeting ID: {selectedMeeting.id})
-                </span>
-              </h2>
-
-              <p className="text-gray-700 mb-3 sm:mb-4 text-xs sm:text-sm">
-                <strong>Created At:</strong> {new Date(selectedMeeting.created_at).toLocaleString()}
-              </p>
-
-              {/* Transcripts */}
-              {selectedMeeting.transcripts && selectedMeeting.transcripts.length > 0 ? (
-                selectedMeeting.transcripts.map((t) => (
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredMeetings.map((meeting) => (
                   <div
-                    key={t.id}
-                    className="w-full bg-white border border-gray-300 rounded-lg p-4 sm:p-6 mt-3 sm:mt-4 flex flex-col space-y-3 sm:space-y-4"
+                    key={meeting.meeting_id}
+                    className="bg-white/10 backdrop-blur-sm rounded-lg p-6 hover:bg-white/15 transition-all duration-200 border border-white/20"
                   >
-                    {editingTranscriptId === t.id ? (
-                      <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
-                        {["transcript", "summary"].map((field) => (
-                          <div key={field} className="flex flex-col flex-1">
-                            <label className="font-semibold capitalize mb-1 block text-sm sm:text-base">
-                              {field.replace("_", " ")}:
-                            </label>
-                            <textarea
-                              className="w-full h-32 sm:h-48 border p-2 sm:p-3 rounded resize-none overflow-y-auto text-sm sm:text-base"
-                              value={editData[field]}
-                              onChange={(e) =>
-                                setEditData({ ...editData, [field]: e.target.value })
-                              }
-                            />
-                          </div>
-                        ))}
-
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                          <button
-                            onClick={() => handleSaveTranscript(t.id)}
-                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition-colors text-sm sm:text-base w-full sm:w-auto"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingTranscriptId(null)}
-                            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors text-sm sm:text-base w-full sm:w-auto"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                    {/* Meeting Name - Editable */}
+                    {editingMeetingId === meeting.meeting_id ? (
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={editMeetingName}
+                          onChange={(e) => setEditMeetingName(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded text-white"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveMeetingName(meeting.meeting_id)}
+                          className="p-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                        >
+                          <Save className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingMeetingId(null)}
+                          className="p-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     ) : (
-                      <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
-                        {/* Transcript */}
-                        {t.transcript && (
-                          <div className="flex flex-col flex-1">
-                            <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Transcript</h4>
-                            <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                              {t.transcript}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Summary */}
-                        {t.summary && (
-                          <div className="flex flex-col flex-1">
-                            <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Summary</h4>
-                            <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                              {t.summary}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {/* Edit */}
-                          <button
-                            onClick={() => handleEditTranscript(t)}
-                            className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Edit"
-                          >
-                            <img src="/images/edit.png" alt="Edit" className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-
-                          {/* Copy */}
-                          <button
-                            onClick={async () => {
-                              try {
-                                const textToCopy = `Transcript:\n${t.transcript || ""}\n\nSummary:\n${t.summary || ""}`;
-                                await navigator.clipboard.writeText(textToCopy);
-                                toast.success("Copied to clipboard!");
-                              } catch (err) {
-                                toast.error("Failed to copy!");
-                              }
-                            }}
-                            className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Copy"
-                          >
-                            <img src="/images/copy.png" alt="Copy" className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-
-                          {/* Download DOCX */}
-                          <button
-                            onClick={async () => {
-                              if (!t) return;
-
-                              const children = [];
-
-                              // Title
-                              children.push(
-                                new Paragraph({
-                                  text: "Clinical Summary & Transcript",
-                                  heading: HeadingLevel.TITLE,
-                                  alignment: AlignmentType.CENTER,
-                                  spacing: { after: 400 },
-                                })
-                              );
-
-                              // Summary section (if present)
-                              if (t.summary && String(t.summary).trim()) {
-                                children.push(
-                                  new Paragraph({
-                                    text: "Summary",
-                                    heading: HeadingLevel.HEADING_1,
-                                    spacing: { before: 300, after: 200 },
-                                    shading: {
-                                      fill: "E6E6E6",
-                                    },
-                                  })
-                                );
-
-                                const summaryText = String(t.summary).trim();
-                                const summaryLines = summaryText.split('\n');
-                                summaryLines.forEach(line => {
-                                  children.push(
-                                    new Paragraph({
-                                      text: line,
-                                      spacing: { after: 120 },
-                                    })
-                                  );
-                                });
-
-                                children.push(
-                                  new Paragraph({
-                                    text: "",
-                                    spacing: { after: 200 },
-                                  })
-                                );
-                              }
-
-                              // Transcript section
-                              children.push(
-                                new Paragraph({
-                                  text: "Transcript",
-                                  heading: HeadingLevel.HEADING_1,
-                                  spacing: { before: 400, after: 200 },
-                                  shading: {
-                                    fill: "E6F5FF",
-                                  },
-                                })
-                              );
-
-                              const transcriptText = t.transcript && String(t.transcript).trim()
-                                ? String(t.transcript).trim()
-                                : "Transcript will appear here...";
-
-                              const transcriptLines = transcriptText.split('\n');
-                              transcriptLines.forEach(line => {
-                                children.push(
-                                  new Paragraph({
-                                    text: line,
-                                    spacing: { after: 120 },
-                                  })
-                                );
-                              });
-
-                              // Create document
-                              const doc = new Document({
-                                sections: [{
-                                  properties: {
-                                    page: {
-                                      margin: {
-                                        top: 720,
-                                        right: 720,
-                                        bottom: 720,
-                                        left: 720,
-                                      },
-                                    },
-                                  },
-                                  children: children,
-                                }],
-                              });
-
-                              // Generate and download
-                              const blob = await Packer.toBlob(doc);
-                              saveAs(blob, `report_meeting_${selectedMeeting.id}.docx`);
-                            }}
-                            className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Download DOCX"
-                          >
-                            <img src="/images/downloads.png" alt="Save DOCX" className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-
-                        </div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-white flex-1">
+                          {meeting.meeting_name || getDefaultMeetingName(meeting.created_at)}
+                        </h3>
+                        <button
+                          onClick={() => handleEditMeetingName(meeting)}
+                          className="p-2 hover:bg-white/10 rounded transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-300" />
+                        </button>
                       </div>
                     )}
+
+                    {/* Meeting Info */}
+                    <div className="flex items-center text-gray-300 text-sm mb-1">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {formatDate(meeting.created_at)}
+                    </div>
+                    <div className="flex items-center text-gray-300 text-sm mb-4">
+                      <Clock className="w-4 h-4 mr-2" />
+                      {formatTime(meeting.created_at)}
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+                      <div className="bg-white/5 rounded p-2">
+                        <div className="text-gray-400">Minutes</div>
+                        <div className="text-white font-semibold">
+                          {meeting.minutes?.length || 0} items
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded p-2">
+                        <div className="text-gray-400">Transcript</div>
+                        <div className="text-white font-semibold">
+                          {meeting.transcript ? 'Available' : 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <button
+                      onClick={() => handleViewMeeting(meeting)}
+                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
+                    >
+                      View Details
+                    </button>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-600 text-sm sm:text-base">No transcripts available.</p>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Meeting Details View */}
+            <button
+              onClick={() => setSelectedMeeting(null)}
+              className="text-blue-400 hover:text-blue-300 mb-4 flex items-center gap-2"
+            >
+              ← Back to Meetings
+            </button>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+              {/* Header */}
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-white mb-2">
+                  {selectedMeeting.meeting_name || getDefaultMeetingName(selectedMeeting.created_at)}
+                </h1>
+                <p className="text-gray-300">
+                  {formatDate(selectedMeeting.created_at)} at {formatTime(selectedMeeting.created_at)}
+                </p>
+              </div>
+
+              {/* Minutes Section */}
+              {selectedMeeting.minutes && selectedMeeting.minutes.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-white">Minutes</h2>
+                    <button
+                      onClick={() => handleDownloadMinutes(selectedMeeting)}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Minutes
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {selectedMeeting.minutes.map((minute, index) => (
+                      <div key={index} className="bg-white/5 rounded-lg p-6 border border-white/10">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="bg-blue-600 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold">
+                            {minute.agenda_number}
+                          </div>
+                          <h3 className="text-xl font-semibold text-white">{minute.agenda_name}</h3>
+                        </div>
+                        <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+                          {minute.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Transcript Section */}
+              {selectedMeeting.transcript && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-white">Transcript</h2>
+                    <button
+                      onClick={() => handleDownloadTranscript(selectedMeeting)}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Transcript
+                    </button>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                    <div className="text-gray-300 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+                      {selectedMeeting.transcript}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!selectedMeeting.minutes?.length && !selectedMeeting.transcript && (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-400">No minutes or transcript available for this meeting</p>
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
-
-    {/* Toast Container */}
-    <ToastContainer position="top-right" autoClose={2000} hideProgressBar />
-  </div>
-);
+    </div>
+  );
 }

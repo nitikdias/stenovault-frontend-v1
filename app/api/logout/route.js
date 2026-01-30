@@ -21,8 +21,9 @@ export async function POST(request) {
 
     console.log('🔁 Forwarding logout request to Flask backend');
     const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY;
+    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
 
-    const response = await fetch('/api/backend/logout', {
+    const response = await fetch(`${API_BASE_URL}/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -56,7 +56,7 @@ useEffect(() => {
     // Clear frontend transcript
     setTranscript("");
     
-    // Clear minutes
+    // Clear minutes only when creating a NEW encounter
     setMinutes([]);
     
     // Reset other states
@@ -69,6 +69,42 @@ useEffect(() => {
     toast.info("New encounter started - ready for recording");
   }
 }, [meetingId, user]);
+
+// ✅ Load saved minutes for the current encounter
+useEffect(() => {
+  if (meetingId && user?.id) {
+    loadSavedMinutes();
+  }
+}, [meetingId, user?.id]);
+
+const loadSavedMinutes = async () => {
+  if (!user?.id || !meetingId) return;
+  
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+  try {
+    const response = await fetch(`/api/backend/get-minutes?user_id=${user.id}&encounter_id=${meetingId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": API_KEY
+      },
+      credentials: "include",
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.minutes && data.minutes.length > 0) {
+        setMinutes(data.minutes);
+        console.log("✅ Loaded saved minutes:", data.minutes.length);
+      }
+    } else if (response.status !== 404) {
+      // 404 is expected if no minutes exist yet
+      console.error("Failed to load minutes:", await response.text());
+    }
+  } catch (error) {
+    console.error("Error loading minutes:", error);
+  }
+};
 
 // ✅ Add function to clear backend transcript
 const clearBackendTranscript = async () => {

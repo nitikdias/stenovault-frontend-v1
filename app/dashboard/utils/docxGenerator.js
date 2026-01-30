@@ -108,7 +108,7 @@ export const generateDOCX = async (sections, transcript) => {
   saveAs(blob, "ClinicalSummary.docx");
 };
 
-export const generateAgendaMinutesDOCX = async (minutes) => {
+export const generateAgendaMinutesDOCX = async (minutes, metadata = {}) => {
   const children = [];
 
   // Title page
@@ -122,9 +122,19 @@ export const generateAgendaMinutesDOCX = async (minutes) => {
   );
 
   // Metadata
+  if (metadata.meetingName) {
+    children.push(
+      new Paragraph({
+        text: `Meeting: ${metadata.meetingName}`,
+        spacing: { after: 120 },
+        bold: true,
+      })
+    );
+  }
+
   children.push(
     new Paragraph({
-      text: `Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      text: `Date: ${metadata.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
       spacing: { after: 120 },
     })
   );
@@ -226,7 +236,7 @@ export const generateAgendaMinutesDOCX = async (minutes) => {
     }],
   });
 
-  // Generate and download
+  // Generate and return blob (don't auto-download)
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `meeting-minutes-${new Date().toISOString().split('T')[0]}.docx`);
+  return blob;
 };

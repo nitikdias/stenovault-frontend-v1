@@ -27,7 +27,7 @@ export async function middleware(req) {
 
   try {
     // ✅ Verify session with Flask backend
-    const res = await fetch(`http://localhost:8080/verify-session`, {
+    const res = await fetch(`${API_BASE_URL}/verify-session`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
@@ -58,7 +58,10 @@ export async function middleware(req) {
 
   } catch (err) {
     console.error("💥 Middleware verification error:", err);
-    return NextResponse.redirect(new URL("/login", req.url));
+    // ✅ On fetch error (backend down), allow access but log the error
+    // This prevents the app from being completely inaccessible if backend is temporarily down
+    console.warn("⚠️ Backend unreachable, allowing access with existing cookie");
+    return NextResponse.next();
   }
 }
 

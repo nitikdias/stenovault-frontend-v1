@@ -105,6 +105,18 @@ export default function Header({ handleLogout }) {
             Home
           </button>
           <button
+            onClick={() => router.push("/reports")}
+            style={navButtonStyle("/reports")}
+            onMouseEnter={(e) => {
+              if (pathname !== "/reports") e.currentTarget.style.backgroundColor = '#ffffff10';
+            }}
+            onMouseLeave={(e) => {
+              if (pathname !== "/reports") e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            Reports
+          </button>
+          <button
             onClick={() => router.push("/register-speaker")}
             style={navButtonStyle("/register-speaker")}
             onMouseEnter={(e) => {
