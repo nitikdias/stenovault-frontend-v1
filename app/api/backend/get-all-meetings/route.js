@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://stenovault-core.eastus.azurecontainer.io:8000';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
 
 export async function GET(request) {

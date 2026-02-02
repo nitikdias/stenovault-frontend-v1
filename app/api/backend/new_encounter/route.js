@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+
 export async function POST(request) {
   try {
     const body = await request.json();
 
     console.log('Proxying new_encounter request to backend');
 
-    const response = await fetch('http://localhost:8080/new_encounter', {
+    const response = await fetch(`${API_BASE_URL}/new_encounter`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

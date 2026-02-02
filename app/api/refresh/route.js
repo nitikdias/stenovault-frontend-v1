@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export async function POST(request) {
   console.log('\n========== /api/refresh ROUTE CALLED ==========');
   console.log(`Time: ${new Date().toLocaleTimeString()}`);
@@ -28,11 +30,11 @@ export async function POST(request) {
     }
 
     console.log('🔁 Forwarding refresh request to Flask backend');
-    console.log(`   Backend URL: http://localhost:8080/refresh`);
+    console.log(`   Backend URL: ${API_BASE_URL}/refresh`);
     console.log(`   Session ID: ${sessionId.value.substring(0, 20)}...`);
 
-    // ✅ Forward request to Flask backend at localhost:8080
-    const backendResponse = await fetch(`http://localhost:8080/refresh`, {
+    // ✅ Forward request to Flask backend
+    const backendResponse = await fetch(`${API_BASE_URL}/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
