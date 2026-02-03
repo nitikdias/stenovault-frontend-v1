@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useMeeting } from '@/context/meetingContext';
 import { useUser } from "@/context/userContext";
 import { useRecording } from '@/context/recordingContext';
-import { useAudioRecorder } from './dashboard/hooks/useAudioRecorder';
+import { useAudioRecorderVAD as useAudioRecorder } from './dashboard/hooks/useAudioRecorderVAD';
 import Header from './header/page';
 import RecordingPanel from './dashboard/components/RecordingPanel';
 import AgendaMinutes from './dashboard/components/AgendaMinutes';

@@ -100,7 +100,7 @@ export default function RecordingPanel({
     }
     // Otherwise start recording
     setReadyForSummary(false);
-    startRec();
+    await startRec();
   };
 
   const handleStopRecording = async () => {
