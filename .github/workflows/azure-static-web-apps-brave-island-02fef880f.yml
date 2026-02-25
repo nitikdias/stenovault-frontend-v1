@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: true
           lfs: false
-
+          
       - name: Make .git/config writable
         run: sudo chmod -R u+w .git
 
@@ -27,12 +27,14 @@ jobs:
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
+          # Ensure this secret name matches what you just updated in GitHub Settings
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BRAVE_ISLAND_02FEF880F }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "frontend/my-app"
-          api_location: ""
-          output_location: ""
+          app_location: "/" 
+          api_location: "" 
+          # For Next.js hybrid apps, Azure recommends leaving this blank
+          output_location: "" 
         
         env:
           # This pulls from your GitHub repository secrets
