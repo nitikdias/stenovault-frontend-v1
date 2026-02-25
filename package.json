@@ -29,6 +29,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-toastify": "^11.0.5",
+    "recorder-js": "^1.0.7",
     "socket.io-client": "^4.8.1",
     "uuid": "^13.0.0",
     "webm-to-wav-converter": "^1.1.0"
