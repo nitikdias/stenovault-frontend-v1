@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMeeting } from "@/context/meetingContext";
+import { useMeeting } from "../../context/meetingContext";
 import Header from "../header/page";
-import { useRecording } from "@/context/recordingContext";
+import { useRecording } from "../../context/recordingContext";
 import { toast } from "react-toastify";
 
 export default function NewEncounter() {
