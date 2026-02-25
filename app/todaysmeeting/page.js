@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Header from '../header/page';
 
-export default function TodaysMeetingPage() {
+function TodaysMeetingContent() {
   const [meetings, setMeetings] = useState([]);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const router = useRouter();
@@ -459,5 +459,13 @@ export default function TodaysMeetingPage() {
 
       <ToastContainer position="bottom-right" />
     </>
+  );
+}
+
+export default function TodaysMeetingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TodaysMeetingContent />
+    </Suspense>
   );
 }
