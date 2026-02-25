@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Chatbot from '../chatbot/page';
 
-export default function ViewPage() {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+function ViewContent() {
   const [data, setData] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
@@ -15,7 +17,7 @@ export default function ViewPage() {
   useEffect(() => {
     if (!meetingId) return;
     console.log('🔄 Fetching meeting transcript for ID:', meetingId);
-    fetch(`http://localhost:8000/meetings/${meetingId}/transcript`)
+    fetch(`${API_BASE_URL}/meetings/${meetingId}/transcript`)
       .then(res => {
         console.log('📡 Backend response status:', res.status, res.statusText);
         return res.json();
@@ -43,7 +45,7 @@ export default function ViewPage() {
   }, [meetingId]);
 
   const handleSave = () => {
-    fetch(`http://localhost:8000/transcripts/${data.id}`, {
+    fetch(`${API_BASE_URL}/transcripts/${data.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editData)
@@ -176,5 +178,13 @@ export default function ViewPage() {
       <Chatbot transcript={data?.transcript} />
 
     </div>
+  );
+}
+
+export default function ViewPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ViewContent />
+    </Suspense>
   );
 }

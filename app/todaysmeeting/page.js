@@ -24,11 +24,12 @@ export default function TodaysMeetingPage() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
   // The redirect URI used for Google Calendar OAuth — must match exactly
+  // Always derived from the current browser origin so it works in any deployment
   const getRedirectUri = () => {
     if (typeof window !== "undefined") {
       return `${window.location.origin}/todaysmeeting`;
     }
-    return "http://localhost:3000/todaysmeeting";
+    return '/todaysmeeting'; // SSR fallback — OAuth redirects only happen client-side
   };
 
   // Check profile

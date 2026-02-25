@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Header from '../header/page';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
 export default function Reports() {
   const [meetings, setMeetings] = useState([]);
   const [editingNameId, setEditingNameId] = useState(null);
@@ -14,7 +16,7 @@ export default function Reports() {
   const loadMeetings = () => {
     const userId = localStorage.getItem("userId");
     if (!userId) return;
-    fetch(`http://localhost:8000/meetings?user_id=${userId}`)
+    fetch(`${API_BASE_URL}/meetings?user_id=${userId}`)
       .then(res => res.json())
       .then(data => setMeetings(data));
   };
@@ -24,7 +26,7 @@ export default function Reports() {
   }, []);
 
   const handleDelete = (id) => {
-    fetch(`http://localhost:8000/meetings/${id}`, { method: 'DELETE' })
+    fetch(`${API_BASE_URL}/meetings/${id}`, { method: 'DELETE' })
       .then(() => loadMeetings());
   };
 
@@ -34,7 +36,7 @@ export default function Reports() {
   };
 
   const handleSaveMeetingName = (id) => {
-    fetch(`http://localhost:8000/meetings/${id}`, {
+    fetch(`${API_BASE_URL}/meetings/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newMeetingName })
