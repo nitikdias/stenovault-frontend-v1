@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
-import { useUser } from '@/context/userContext';
+import { useUser } from '../../context/userContext';
 import Header from '../header/page';
 import 'react-toastify/dist/ReactToastify.css';
 

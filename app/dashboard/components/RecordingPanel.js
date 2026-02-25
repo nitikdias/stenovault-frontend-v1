@@ -1,8 +1,8 @@
 "use client";
 import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMeeting } from '@/context/meetingContext';
-import { useRecording } from '@/context/recordingContext';
+import { useMeeting } from '../../../context/meetingContext';
+import { useRecording } from '../../../context/recordingContext';
 import { toast } from 'react-toastify';
 
 // --- Waveform Component ---
@@ -78,14 +78,17 @@ export default function RecordingPanel({
   startRec, stopRec, pauseRec, resumeRec,
   // Props for transcript and other controls
   transcript, selectedLanguage, handleLanguageChange, canRecord,
-  readyForSummary, setReadyForSummary, handleGenerateSummary
+  readyForSummary, setReadyForSummary, handleGenerateSummary,
+  stopTranscriptPolling,
+  botRecording
 }) {
+  console.log("[RecordingPanel] Render - recording:", recording, "botRecording:", botRecording, "canRecord:", canRecord);
   const router = useRouter();
   const [creatingSession, setCreatingSession] = useState(false);
   const [processingRecording, setProcessingRecording] = useState(false);
   const { meetingId, setMeetingId } = useMeeting();
   const { setCanRecord } = useRecording();
-  
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -93,120 +96,43 @@ export default function RecordingPanel({
   };
 
   const handleStart = async () => {
-    // If no session active, create one directly
+    // If no session active, create one first
     if (!canRecord) {
       await createNewSession();
+      // createNewSession sets canRecord=true; startRec will be triggered by
+      // the canRecord watcher in the auto-start effect
       return;
     }
-    // Otherwise start recording
+    // Session exists — start recording
     setReadyForSummary(false);
-    await startRec();
+    const selectedMic = mics.find(m => m.deviceId === deviceId);
+    console.log("[RecordingPanel] Starting recording with mic:", selectedMic ? selectedMic.label : deviceId);
+    startRec();
+  };
+
+  // Wait for VAD to be ready (vadRef exposed via prop), then start recording
+  const waitForVADAndRecord = async () => {
+    const maxWait = 10000; // 10 seconds
+    const interval = 200;
+    let elapsed = 0;
+    while (elapsed < maxWait) {
+      if (startRec && typeof startRec === 'function') {
+        // startRec itself checks vadRef.current internally
+        // We need to check if it's truly ready — call it and break
+        setReadyForSummary(false);
+        startRec();
+        return;
+      }
+      await new Promise(r => setTimeout(r, interval));
+      elapsed += interval;
+    }
+    toast.error("Mic not ready. Please start recording manually.");
   };
 
   const handleStopRecording = async () => {
-    if (!user?.id) {
-      console.error("Cannot stop recording: No user ID");
-      toast.error("Missing user information");
-      return;
-    }
-
-    try {
-      // Show processing popup
-      setProcessingRecording(true);
-      toast.info("Processing final segment...", { autoClose: false, toastId: "processing" });
-
-      // Stop the recorder and wait for all uploads to complete
-      console.log("🛑 Stopping recorder and uploading final chunk...");
-      await stopRec();
-      console.log("✅ Recorder stopped, all chunks uploaded (including chunk_X_final.wav)");
-
-      // Now wait for backend to process the final chunk
-      console.log("⏳ Waiting for backend to process final chunk...");
-      
-      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-      const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-      
-      // Get initial transcript length
-      const beforeFormData = new FormData();
-      beforeFormData.append("user_id", user.id);
-      
-      const beforeRes = await fetch(`/api/backend/get_transcript`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${TOKEN_KEY}`,
-          "X-API-KEY": API_KEY
-        },
-        credentials: "include",
-        body: beforeFormData
-      });
-      
-      const beforeData = await beforeRes.json();
-      const beforeLength = (beforeData.transcript || "").length;
-      console.log(`📊 Initial transcript length: ${beforeLength} chars`);
-
-      // Poll get_transcript until final chunk is processed
-      let attempts = 0;
-      const maxAttempts = 45; // 45 seconds max (processing can take time)
-      let finalChunkProcessed = false;
-      
-      while (attempts < maxAttempts && !finalChunkProcessed) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        attempts++;
-        
-        const pollFormData = new FormData();
-        pollFormData.append("user_id", user.id);
-        
-        const pollRes = await fetch(`/api/backend/get_transcript`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${TOKEN_KEY}`,
-            "X-API-KEY": API_KEY
-          },
-          credentials: "include",
-          body: pollFormData
-        });
-        
-        const pollData = await pollRes.json();
-        const currentLength = (pollData.transcript || "").length;
-        
-        console.log(`📊 Poll ${attempts}/${maxAttempts}: Transcript length = ${currentLength} chars`);
-        
-        // Check if transcript has been updated (grown significantly)
-        // The final chunk should add some text
-        if (currentLength > beforeLength) {
-          console.log(`✅ Final chunk processed! Transcript grew from ${beforeLength} to ${currentLength} chars (+${currentLength - beforeLength})`);
-          finalChunkProcessed = true;
-          
-          // Wait one more second to ensure everything is written
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          break;
-        }
-        
-        // If no change after 10 attempts, it might already be processed or empty
-        if (attempts >= 10 && currentLength === beforeLength && beforeLength > 0) {
-          console.log(`ℹ️ No new content after ${attempts} attempts, final chunk might be empty or already processed`);
-          finalChunkProcessed = true;
-          break;
-        }
-      }
-      
-      if (!finalChunkProcessed && attempts >= maxAttempts) {
-        console.warn("⚠️ Timeout waiting for final chunk processing");
-        toast.warning("Processing took longer than expected, but recording is saved");
-      }
-
-      // Success!
-      toast.dismiss("processing");
-      toast.success("Recording stopped successfully!");
-      setReadyForSummary(true);
-
-    } catch (error) {
-      console.error("❌ Error stopping recording:", error);
-      toast.dismiss("processing");
-      toast.error(`Failed to stop recording: ${error.message}`);
-    } finally {
-      setProcessingRecording(false);
-    }
+    console.log("[RecordingPanel] Stop button clicked - calling parent stopRec");
+    // Parent's stopRec (handleStopRec in page.js) handles both bot and normal recording
+    await stopRec();
   };
 
   const createNewSession = async () => {
@@ -219,23 +145,23 @@ export default function RecordingPanel({
     setCreatingSession(true);
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-    
-    const payload = { 
-      user_id: String(user.id)
+    const skipEmbeddings = localStorage.getItem("emr_skip_embeddings") === "true";
+
+    const payload = {
+      user_id: String(user.id),
+      ...(skipEmbeddings && { skip_embeddings: true }),
+      meeting_name: localStorage.getItem("emr_meeting_name") || undefined
     };
-    
+
     console.log("=== RECORDING PANEL NEW ENCOUNTER REQUEST ===");
     console.log("Payload:", JSON.stringify(payload, null, 2));
-    console.log("User object:", user);
-    console.log("User ID type:", typeof user.id);
-    console.log("User ID value:", user.id);
     console.log("===========================================");
-    
+
     try {
       const res = await fetch(`/api/backend/new_encounter`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
+        headers: {
+          "Content-Type": "application/json",
           "Authorization": `Bearer ${TOKEN_KEY}`,
           "X-API-KEY": API_KEY
         },
@@ -245,17 +171,14 @@ export default function RecordingPanel({
 
       if (res.ok) {
         const data = await res.json();
-        
-        // Update contexts
         setMeetingId(data.meeting_id);
         localStorage.setItem("meetingId", data.meeting_id);
         setCanRecord(true);
-        
         toast.success("Session started! You can now record.");
       } else {
         const error = await res.json();
         console.error("Failed to create session:", error);
-        toast.error("Failed to create session. Please try again.");
+        toast.error(error.message || "Failed to create session. Please try again.");
       }
     } catch (err) {
       console.error("Error creating session:", err);
@@ -285,11 +208,11 @@ export default function RecordingPanel({
             marginBottom: '4px',
             letterSpacing: '-0.5px'
           }}>Ambient Listening</h3>
-          
+
         </div>
 
         {/* Settings Card or Waveform */}
-        {!recording ? (
+        {!(recording || botRecording) ? (
           <div style={{
             background: 'rgba(30, 41, 59, 0.5)',
             border: '1px solid rgba(71, 85, 105, 0.3)',
@@ -311,14 +234,14 @@ export default function RecordingPanel({
                 letterSpacing: '0.5px'
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="2" y1="12" x2="22" y2="12"/>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 </svg>
                 Language
               </label>
-              <select 
-                value={selectedLanguage} 
+              <select
+                value={selectedLanguage}
                 onChange={handleLanguageChange}
                 style={{
                   width: '100%',
@@ -361,15 +284,15 @@ export default function RecordingPanel({
                 letterSpacing: '0.5px'
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
                 Microphone Source
               </label>
-              <select 
-                value={deviceId} 
+              <select
+                value={deviceId}
                 onChange={e => setDeviceId(e.target.value)}
                 style={{
                   width: '100%',
@@ -429,9 +352,9 @@ export default function RecordingPanel({
         )}
 
         {/* Action Buttons */}
-        {!recording ? (
-          <button 
-            disabled={userLoading || !user || creatingSession} 
+        {!(recording || botRecording) ? (
+          <button
+            disabled={userLoading || !user || creatingSession}
             onClick={handleStart}
             style={{
               width: '100%',
@@ -464,22 +387,22 @@ export default function RecordingPanel({
             title={userLoading ? "Loading user..." : (!user ? "User not found" : (creatingSession ? "Creating session..." : ""))}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2"/>
-              <line x1="8" y1="23" x2="16" y2="23" stroke="white" strokeWidth="2"/>
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" />
+              <line x1="8" y1="23" x2="16" y2="23" stroke="white" strokeWidth="2" />
             </svg>
             {userLoading ? "Loading..." : (creatingSession ? "Creating Session..." : (!canRecord ? "Start Session" : "Start Recording"))}
           </button>
         ) : (
-          <button 
+          <button
             onClick={handleStopRecording}
             disabled={processingRecording}
             style={{
               width: '100%',
               padding: '14px 20px',
-              background: processingRecording 
-                ? 'linear-gradient(135deg, #64748b 0%, #475569 100%)' 
+              background: processingRecording
+                ? 'linear-gradient(135deg, #64748b 0%, #475569 100%)'
                 : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
               border: 'none',
               borderRadius: '12px',
@@ -492,8 +415,8 @@ export default function RecordingPanel({
               justifyContent: 'center',
               gap: '10px',
               transition: 'all 0.2s ease',
-              boxShadow: processingRecording 
-                ? '0 8px 24px rgba(100, 116, 139, 0.3)' 
+              boxShadow: processingRecording
+                ? '0 8px 24px rgba(100, 116, 139, 0.3)'
                 : '0 8px 24px rgba(220, 38, 38, 0.3)',
               opacity: processingRecording ? 0.7 : 1
             }}
@@ -520,7 +443,7 @@ export default function RecordingPanel({
             ) : (
               <>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" rx="2"/>
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
                 Stop Recording
               </>
@@ -529,7 +452,7 @@ export default function RecordingPanel({
         )}
 
         {/* Recording Status */}
-        {recording && (
+        {(recording || botRecording) && (
           <div style={{
             marginTop: '12px',
             textAlign: 'center',
@@ -546,9 +469,9 @@ export default function RecordingPanel({
               borderRadius: '50%',
               background: '#ef4444',
               animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-            }}/>
+            }} />
             <span className="font-mono">{formatTime(recordingTime)}</span>
-            <span>Recording...</span>
+            <span>{botRecording ? "Bot Transcribing..." : "Recording..."}</span>
           </div>
         )}
       </div>
@@ -568,7 +491,7 @@ export default function RecordingPanel({
       }}>
         <div className="flex items-center gap-2 mb-4" style={{ flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h8c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h8c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
           </svg>
           <h2 style={{ fontSize: '16px', fontWeight: '600', color: 'white', margin: 0 }}>Transcript</h2>
         </div>
@@ -585,12 +508,12 @@ export default function RecordingPanel({
           flex: 1,
           minHeight: 0
         }}
-        className="transcript-scroll"
+          className="transcript-scroll"
         >
           {transcript || 'Transcript will appear here...'}
         </div>
       </div>
-      
+
       <style jsx>{`
         .transcript-scroll::-webkit-scrollbar {
           width: 8px;
@@ -637,12 +560,12 @@ export default function RecordingPanel({
             maxWidth: '400px'
           }}>
             <div style={{ marginBottom: '20px' }}>
-              <svg 
-                width="60" 
-                height="60" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="#4F46E5" 
+              <svg
+                width="60"
+                height="60"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#4F46E5"
                 strokeWidth="2"
                 style={{
                   animation: 'spin 1s linear infinite',

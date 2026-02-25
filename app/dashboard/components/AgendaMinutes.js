@@ -1,9 +1,9 @@
 "use client";
 import { useState } from 'react';
 import { toast } from 'react-toastify';
-import { useUser } from '@/context/userContext';
-import { useMeeting } from '@/context/meetingContext';
-import { useRecording } from '@/context/recordingContext';
+import { useUser } from '../../../context/userContext';
+import { useMeeting } from '../../../context/meetingContext';
+import { useRecording } from '../../../context/recordingContext';
 import { generateAgendaMinutesDOCX } from '../utils/docxGenerator';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -28,12 +28,12 @@ function MinuteSection({ minute, index, onUpdate, onSave }) {
       padding: '16px',
       transition: 'all 0.2s'
     }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.boxShadow = 'none';
-    }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'none';
+      }}
     >
       {/* Agenda Number & Name */}
       <div className="mb-4">
@@ -50,7 +50,7 @@ function MinuteSection({ minute, index, onUpdate, onSave }) {
             Agenda {minute.agenda_number}
           </span>
         </div>
-        
+
         {isEditingAgenda ? (
           <div className="flex gap-2">
             <input
@@ -319,12 +319,13 @@ export default function AgendaMinutes({ minutes, setMinutes, transcript, onMinut
 
       const minutesData = await minutesResponse.json();
       const generatedMinutes = minutesData.minutes || [];
+      const briefName = minutesData.brief_name || "MoM Report";
       setMinutes(generatedMinutes);
       toast.success(`Generated minutes for ${generatedMinutes.length} agenda items`);
-      
+
       // Automatically save to database
-      await handleSaveMinutes(generatedMinutes);
-      
+      await handleSaveMinutes(generatedMinutes, briefName);
+
     } catch (error) {
       console.error("Error generating minutes:", error);
       toast.error(error.message || "Failed to generate minutes");
@@ -333,9 +334,9 @@ export default function AgendaMinutes({ minutes, setMinutes, transcript, onMinut
     }
   };
 
-  const handleSaveMinutes = async (minutesToSave = null) => {
+  const handleSaveMinutes = async (minutesToSave = null, briefNameToSave = null) => {
     const minutesData = minutesToSave || minutes;
-    
+
     if (!minutesData || minutesData.length === 0) {
       toast.error("No minutes to save");
       return;
@@ -365,6 +366,7 @@ export default function AgendaMinutes({ minutes, setMinutes, transcript, onMinut
           meeting_id: meetingId,
           user_id: userId,
           minutes: minutesData,
+          brief_name: briefNameToSave
         }),
       });
 
@@ -376,21 +378,21 @@ export default function AgendaMinutes({ minutes, setMinutes, transcript, onMinut
       const result = await response.json();
       console.log("✅ Minutes saved to database:", result);
       toast.success("Minutes saved successfully!");
-      
+
       // End session after successful save
       console.log("📝 Minutes saved, ending session...");
       setCanRecord(false);
-      
+
       // ✅ DON'T clear meetingId or minutes - keep them visible until NEW session starts
       // Minutes will be cleared automatically when user starts a new session (handled in page.js useEffect)
-      
+
       toast.success("Session ended - minutes remain visible!");
-      
+
       // Notify parent component if callback provided
       if (onMinutesSaved) {
         onMinutesSaved();
       }
-      
+
     } catch (error) {
       console.error("Error saving minutes:", error);
       toast.error(error.message || "Failed to save minutes");
@@ -460,7 +462,7 @@ export default function AgendaMinutes({ minutes, setMinutes, transcript, onMinut
               boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
             }}>
               <svg viewBox="0 0 24 24" fill="white">
-                <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z"/>
+                <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11z" />
               </svg>
             </div>
             <h2 style={{

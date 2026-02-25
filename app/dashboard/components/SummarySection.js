@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { useUser } from '@/context/userContext';
+import { useUser } from '../../../context/userContext';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY || "";

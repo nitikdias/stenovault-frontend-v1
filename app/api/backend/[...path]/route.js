@@ -55,6 +55,12 @@ async function handleRequest(request, context, method) {
       'X-API-KEY': API_KEY,
     };
     
+    // Forward Authorization header from client request
+    const authHeader = request.headers.get('authorization');
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
     if (sessionId) {
       headers['Cookie'] = `session_id=${sessionId.value}`;
     }

@@ -1,8 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { UserProvider } from '@/context/userContext';
-import { MeetingProvider } from '@/context/meetingContext';
-import { RecordingProvider } from "@/context/recordingContext";
+import { UserProvider } from '../context/userContext';
+import { MeetingProvider } from '../context/meetingContext';
+import { RecordingProvider } from "../context/recordingContext";
 import ClientLayout from "./ClientLayout";
 
 const geistSans = Geist({
