@@ -3,12 +3,12 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 
-const CHATBOT_SERVICE_URL = 'http://127.0.0.1:8000';
+const CHATBOT_SERVICE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    
+
     console.log('🤖 Chatbot proxy received:', {
       hasTranscript: !!body.transcript,
       hasUserId: !!body.user_id,
@@ -20,8 +20,10 @@ export async function POST(request) {
 
     let finalPayload = { ...body };
 
-    // If user_id is provided but no transcript, read the live transcript file
-    if (body.user_id && !body.transcript) {
+    // Only read the live transcript file if the request explicitly says it's a live session.
+    // This prevents stale leftover live_transcript.txt files from overriding the
+    // /ask/user endpoint which fetches the last 5 meetings from the DB.
+    if (body.user_id && !body.transcript && body.mode === 'live') {
       const liveTranscriptPath = join(
         process.cwd(),
         '..',
@@ -31,13 +33,13 @@ export async function POST(request) {
         body.user_id,
         'live_transcript.txt'
       );
-      
-      console.log('📂 Attempting to read live transcript from:', liveTranscriptPath);
+
+      console.log('📂 Live mode — reading live transcript from:', liveTranscriptPath);
 
       if (existsSync(liveTranscriptPath)) {
         try {
           const liveTranscript = await readFile(liveTranscriptPath, 'utf-8');
-          
+
           if (liveTranscript.trim()) {
             console.log('✅ Live transcript loaded:', {
               length: liveTranscript.length,
@@ -58,12 +60,21 @@ export async function POST(request) {
       }
     }
 
-    console.log('📤 Sending to chatbot service:', {
-      hasTranscript: !!finalPayload.transcript,
-      transcriptLength: finalPayload.transcript?.length || 0
-    });
+    // Determine which backend endpoint to use:
+    // - If user_id is provided (standalone chatbot or live mode without live transcript),
+    //   use /ask/user which fetches the last 5 meetings from the DB
+    // - If transcript is provided (viewing a saved meeting), use /ask with the transcript
+    let backendEndpoint = `${CHATBOT_SERVICE_URL}/ask`;
 
-    const response = await fetch(`${CHATBOT_SERVICE_URL}/ask`, {
+    if (finalPayload.user_id && !finalPayload.transcript) {
+      // Route to /ask/user — fetches last 5 meetings from DB
+      backendEndpoint = `${CHATBOT_SERVICE_URL}/ask/user`;
+      console.log('🔀 Routing to /ask/user (fetching last 5 meetings from DB)');
+    } else {
+      console.log('🔀 Routing to /ask (using provided transcript)');
+    }
+
+    const response = await fetch(backendEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -72,7 +83,7 @@ export async function POST(request) {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('❌ Chatbot service error:', data);
       return NextResponse.json(

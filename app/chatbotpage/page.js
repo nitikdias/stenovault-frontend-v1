@@ -36,10 +36,16 @@ export default function ChatbotPage() {
         return;
       }
 
-      console.log("🌐 Making API request to /ask/user");
-      const res = await fetch("http://127.0.0.1:8000/ask/user", {
+      console.log("🌐 Making API request via proxy to /api/backend/ask");
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+      const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+      const res = await fetch("/api/backend/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY
+        },
         body: JSON.stringify({ question, user_id: userId }),
       });
       console.log("📡 API response status:", res.status, res.statusText);
@@ -83,18 +89,17 @@ export default function ChatbotPage() {
         <main className="flex-1 px-6 sm:px-10 py-10 overflow-auto ml-0 md:ml-5">
           <div className="w-full max-w-6xl mx-auto">
             <h1 className="text-3xl font-bold text-white mb-6">Meeting Assistant</h1>
-            
+
             <div className="flex flex-col h-[calc(100vh-200px)] rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm shadow-2xl overflow-hidden">
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.map((m, i) => (
                   <div
                     key={i}
-                    className={`p-4 rounded-xl max-w-[80%] ${
-                      m.role === "user"
+                    className={`p-4 rounded-xl max-w-[80%] ${m.role === "user"
                         ? "ml-auto bg-violet-600 text-white shadow-lg"
                         : "bg-zinc-800 text-zinc-200 border border-zinc-700"
-                    }`}
+                      }`}
                   >
                     {m.text}
                   </div>

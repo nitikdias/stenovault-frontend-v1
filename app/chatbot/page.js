@@ -9,7 +9,7 @@ export default function Chatbot({ transcript, userId }) {   // 👈 pass transcr
     transcript: { value: transcript, type: typeof transcript, length: transcript?.length || 0 },
     userId: { value: userId, type: typeof userId }
   });
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: "bot", text: "Ask any question regarding the meeting." }
@@ -55,10 +55,10 @@ export default function Chatbot({ transcript, userId }) {   // 👈 pass transcr
       });
 
       const payload = transcript
-        ? { question, transcript }         // 👈 Saved meeting - pass transcript
+        ? { question, transcript }                    // 👈 Saved meeting - pass transcript
         : userId
-        ? { question, user_id: userId }    // 👈 Live mode - pass user_id
-        : { question };                     // 👈 Fallback - just question
+          ? { question, user_id: userId, mode: 'live' } // 👈 Live mode - pass user_id + mode
+          : { question };                                // 👈 Fallback - just question
 
       console.log('📦 Payload created:', {
         keys: Object.keys(payload),
@@ -71,7 +71,7 @@ export default function Chatbot({ transcript, userId }) {   // 👈 pass transcr
       console.log('🌐 Fetching /api/backend/ask...');
       const res = await fetch("/api/backend/ask", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload),
@@ -150,11 +150,10 @@ export default function Chatbot({ transcript, userId }) {   // 👈 pass transcr
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`p-2 rounded-lg max-w-[80%] ${
-                  m.role === "user"
+                className={`p-2 rounded-lg max-w-[80%] ${m.role === "user"
                     ? "ml-auto bg-violet-600 text-white"
                     : "bg-zinc-800 text-zinc-200"
-                }`}
+                  }`}
               >
                 {m.text}
               </div>

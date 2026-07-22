@@ -89,7 +89,7 @@ export default function App() {
   }, [meetingId, user?.id]);
 
   const loadSavedMinutes = async () => {
-    if (!user?.id || !meetingId) return;
+    if (!user?.id || !meetingId || meetingId === 'undefined') return;
 
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {

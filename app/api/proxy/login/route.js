@@ -18,7 +18,7 @@ export async function POST(req) {
     console.log('🔐 Password received:', body.password ? `Yes (length: ${body.password.length})` : 'No - MISSING!');
     console.log('📦 Full body keys:', Object.keys(body));
     console.log('🔑 TOKEN_KEY available:', TOKEN_KEY ? 'Yes (length: ' + TOKEN_KEY.length + ')' : 'No - MISSING!');
-    
+
     if (!TOKEN_KEY) {
       console.error('❌ TOKEN_KEY is not set in environment variables!');
       return NextResponse.json({ error: 'Server configuration error: TOKEN_KEY missing' }, { status: 500 });
@@ -29,7 +29,7 @@ export async function POST(req) {
       'Authorization': `Bearer ${TOKEN_KEY}`,
       "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || ""
     };
-    
+
     console.log('📋 Request headers:', { ...headers, Authorization: 'Bearer ***' + TOKEN_KEY.slice(-20) });
 
     // Forward login request to backend
@@ -41,10 +41,10 @@ export async function POST(req) {
 
     const text = await res.text();
     let data;
-    
+
     console.log('📥 Backend response status:', res.status);
     console.log('📥 Backend response body (first 200 chars):', text.substring(0, 200));
-    
+
     try {
       data = JSON.parse(text);
     } catch (e) {
@@ -63,10 +63,10 @@ export async function POST(req) {
     // If login successful and backend returned session_id, set cookie on frontend domain
     if (data.session_id) {
       const expiresIn = data.expires_in || 300;
-      
+
       response.cookies.set('session_id', data.session_id, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, //change this to process.env.NODE_ENV === 'production' for production
         sameSite: 'lax',
         path: '/',
         maxAge: expiresIn,

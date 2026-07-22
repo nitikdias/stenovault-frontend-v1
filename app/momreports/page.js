@@ -99,6 +99,8 @@ export default function MoMReportPage() {
 
   const handleSaveMeetingName = async (meetingId) => {
     try {
+      console.log("Saving meeting name:", { meetingId, editMeetingName, userId: user.id });
+      
       const response = await fetch(`/api/backend/update-meeting-name`, {
         method: "POST",
         headers: {
@@ -114,15 +116,34 @@ export default function MoMReportPage() {
         }),
       });
 
+      const responseData = await response.json();
+      console.log("Save response:", { status: response.status, data: responseData });
+
       if (response.ok) {
+        console.log("✅ Meeting name updated successfully");
         toast.success("Meeting name updated!");
+        
+        // Update local state for both meetings and filteredMeetings
+        const updatedMeetings = meetings.map(m => 
+          m.meeting_id === meetingId 
+            ? { ...m, meeting_name: editMeetingName }
+            : m
+        );
+        setMeetings(updatedMeetings);
+        
+        // Also update filtered meetings
+        setFilteredMeetings(updatedMeetings.filter((meeting) =>
+          meeting.meeting_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        ));
+        
         setEditingMeetingId(null);
-        fetchMeetings(); // Refresh the list
+        setEditMeetingName("");
       } else {
-        toast.error("Failed to update meeting name");
+        console.error("❌ Failed to update meeting name:", responseData);
+        toast.error(responseData.error || "Failed to update meeting name");
       }
     } catch (error) {
-      console.error("Error updating meeting name:", error);
+      console.error("❌ Error updating meeting name:", error);
       toast.error("Error updating meeting name");
     }
   };

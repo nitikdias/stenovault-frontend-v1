@@ -189,6 +189,8 @@ export function useAudioRecorderVAD() {
 
     const track = stream.getAudioTracks()[0];
     console.log("✅ Stream opened on:", track.label, "deviceId:", track.getSettings().deviceId);
+    console.log("Track label:", track.label);
+    console.log("Track settings:", track.getSettings());
     activeStreamRef.current = stream;
 
     // After first grant, re-enumerate to get labelled mic names for the dropdown
